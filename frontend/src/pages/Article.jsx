@@ -62,8 +62,8 @@ const Article = () => {
   return (
     <>
       <Helmet>
-        <title>{article.title} | {article.category}</title>
-        <meta name="description" content={article.excerpt} />
+        <title>{article.metaTitle || article.title} | {article.category}</title>
+        <meta name="description" content={article.metaDescription || article.excerpt} />
       </Helmet>
 
       <div className="bg-white min-h-screen">
@@ -105,7 +105,12 @@ const Article = () => {
                         <h1 className="text-3xl md:text-6xl font-black text-slate-900 leading-[1.05] tracking-tighter uppercase italic">
                             {article.title}
                         </h1>
-                        <p className="text-slate-500 font-medium text-lg md:text-xl leading-relaxed italic max-w-3xl border-l-2 border-slate-100 pl-6 py-2">
+                        {article.subheadline && (
+                          <h2 className="text-xl md:text-2xl font-bold text-slate-500 leading-relaxed tracking-tight max-w-4xl pt-4">
+                             {article.subheadline}
+                          </h2>
+                        )}
+                        <p className="text-slate-500 font-medium text-lg md:text-xl leading-relaxed italic max-w-3xl border-l-2 border-slate-100 pl-6 py-2 mt-6">
                             {article.excerpt}
                         </p>
                     </div>
@@ -126,10 +131,10 @@ const Article = () => {
                           <span className="text-slate-900 text-[11px] font-black uppercase tracking-widest mb-1.5 leading-none">Published</span>
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">{article.date}</span>
                        </div>
-                       <div className="flex flex-col md:items-center justify-center md:border-r border-slate-100 px-6">
+                       <div className="flex flex-col md:items-center justify-center md:border-r border-slate-100 px-6 text-center">
                           <span className="text-slate-900 text-[11px] font-black uppercase tracking-widest mb-1.5 leading-none">Read Time</span>
                           <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">
-                              {Math.ceil((article.content?.split(' ').length || 0) / 200)} Minute Read
+                              {article.readingTime || (Math.ceil((typeof article.content === 'string' ? article.content?.split(' ').length : 0) || 0) / 200) + ' min read'}
                           </span>
                        </div>
                         <div className="flex flex-col md:items-end justify-center">
@@ -171,22 +176,85 @@ const Article = () => {
                         className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000" 
                     />
                   </div>
-                  <div className="text-center">
-                      <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-300">
-                          Photography by Nation Trends India.
-                      </span>
-                  </div>
+                  {article.imageCaption && (
+                      <div className="text-center">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-800">
+                            {article.imageCaption}
+                        </span>
+                      </div>
+                   )}
                 </div>
 
-                {/* CONTENT */}
-                <div className="text-slate-800 text-lg sm:text-2xl leading-relaxed font-medium py-12 px-2 sm:px-0 font-serif">
-                  {article.content?.split('\n').map((paragraph, idx) => (
-                    paragraph.trim() && (
-                      <p key={idx} className={`mb-8 last:mb-0 ${idx === 0 ? 'drop-cap' : ''}`}>
-                        {paragraph}
-                      </p>
-                    )
-                  ))}
+                {/* CONTENT ENGINE */}
+                <div className="space-y-12 py-12">
+                  {Array.isArray(article.content) ? (
+                    article.content.map((block, index) => (
+                      <div key={index} className="animate-fade-in">
+                        {block.type === 'heading' && (
+                          <h3 className="text-2xl md:text-4xl font-black text-slate-900 uppercase italic tracking-tighter leading-tight mt-16 mb-8">
+                            {block.text}
+                          </h3>
+                        )}
+                        
+                        {block.type === 'paragraph' && (
+                          <p className={`text-slate-700 text-lg sm:text-2xl leading-relaxed font-medium font-serif mb-8 ${index === 0 ? 'drop-cap' : ''}`}>
+                            {block.text}
+                          </p>
+                        )}
+
+                        {block.type === 'quote' && (
+                          <div className="my-16 py-8 border-l-4 border-primary-red pl-10">
+                            <blockquote className="text-3xl md:text-5xl font-black text-slate-900 italic tracking-tighter leading-[1.1]">
+                              "{block.text}"
+                            </blockquote>
+                            {block.author && (
+                              <cite className="block mt-6 text-[11px] font-black uppercase tracking-[0.4em] text-slate-400 not-italic">
+                                — {block.author}
+                              </cite>
+                            )}
+                          </div>
+                        )}
+
+                        {block.type === 'image' && block.url && (
+                          <div className="my-16 space-y-4">
+                            <div className="rounded-[4px] overflow-hidden bg-slate-50">
+                              <img src={block.url} alt={block.caption} className="w-full h-auto" />
+                            </div>
+                            {block.caption && (
+                              <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                                {block.caption}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {block.type === 'list' && block.items && (
+                          <ul className="space-y-6 my-12">
+                            {block.items.filter(item => item.trim()).map((item, i) => (
+                              <li key={i} className="flex gap-6 items-start">
+                                <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-950 text-white flex items-center justify-center text-[10px] font-black">
+                                  {i + 1}
+                                </span>
+                                <span className="text-lg md:text-xl font-medium text-slate-700 leading-relaxed font-serif">
+                                  {item}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-slate-800 text-lg sm:text-2xl leading-relaxed font-medium font-serif">
+                      {article.content?.split('\n').map((paragraph, idx) => (
+                        paragraph.trim() && (
+                          <p key={idx} className={`mb-8 last:mb-0 ${idx === 0 ? 'drop-cap' : ''}`}>
+                            {paragraph}
+                          </p>
+                        )
+                      ))}
+                    </div>
+                  )}
                 </div>
               </article>
             </div>

@@ -27,41 +27,41 @@ export const NewsProvider = ({ children }) => {
 
   // --- INITIAL DATA FETCHING ---
 
+  // --- DATA FETCHING ---
+  const fetchData = async () => {
+    setInitialLoading(true);
+    try {
+      const [artRes, setRes, msgRes, subRes, userRes] = await Promise.all([
+        fetch(`${API_URL}/articles`),
+        fetch(`${API_URL}/settings`),
+        fetch(`${API_URL}/messages`),
+        fetch(`${API_URL}/subscribers`),
+        fetch(`${API_URL}/users`)
+      ]);
+
+      const [artData, setData, msgData, subData, userData] = await Promise.all([
+        artRes.json(),
+        setRes.json(),
+        msgRes.json(),
+        subRes.json(),
+        userRes.json()
+      ]);
+
+      setArticles(artData.map(art => ({ ...art, id: art._id })));
+      setSiteSettings(setData);
+      setBreakingNews(setData.breakingNews);
+      setSiteVisits(setData.siteVisits || 0);
+      setMessages(msgData.map(msg => ({ ...msg, id: msg._id })));
+      setSubscribers(subData);
+      setUsers(userData);
+    } catch (err) {
+      console.error('Data acquisition failure:', err);
+    } finally {
+      setTimeout(() => setInitialLoading(false), 2000);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setInitialLoading(true);
-      try {
-        const [artRes, setRes, msgRes, subRes, userRes] = await Promise.all([
-          fetch(`${API_URL}/articles`),
-          fetch(`${API_URL}/settings`),
-          fetch(`${API_URL}/messages`),
-          fetch(`${API_URL}/subscribers`),
-          fetch(`${API_URL}/users`)
-        ]);
-
-        const [artData, setData, msgData, subData, userData] = await Promise.all([
-          artRes.json(),
-          setRes.json(),
-          msgRes.json(),
-          subRes.json(),
-          userRes.json()
-        ]);
-
-        setArticles(artData.map(art => ({ ...art, id: art._id })));
-        setSiteSettings(setData);
-        setBreakingNews(setData.breakingNews);
-        setSiteVisits(setData.siteVisits || 0);
-        setMessages(msgData.map(msg => ({ ...msg, id: msg._id })));
-        setSubscribers(subData);
-        setUsers(userData);
-      } catch (err) {
-        console.error('Data acquisition failure:', err);
-      } finally {
-        // Minimum delay for branding visibility
-        setTimeout(() => setInitialLoading(false), 2000);
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -230,6 +230,18 @@ export const NewsProvider = ({ children }) => {
     return false;
   };
 
+  const toggleBlockSubscriber = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/subscribers/${id}/block`, { method: 'PATCH' });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscribers(subscribers.map(s => s._id === id ? data : s));
+      }
+    } catch (err) {
+      console.error('Error toggling subscriber block status:', err);
+    }
+  };
+
   const addMessage = async (message) => {
     try {
       const res = await fetch(`${API_URL}/messages`, {
@@ -297,6 +309,7 @@ export const NewsProvider = ({ children }) => {
 
   return (
     <NewsContext.Provider value={{
+      fetchData,
       articles,
       siteVisits,
       currentUser,
@@ -313,6 +326,7 @@ export const NewsProvider = ({ children }) => {
       incrementSiteVisit,
       subscribers,
       addSubscriber,
+      toggleBlockSubscriber,
       messages,
       addMessage,
       deleteMessage,

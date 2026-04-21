@@ -75,7 +75,7 @@ const NewsCard = ({ article, variant = 'medium' }) => {
           className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition duration-700 ease-out"
           loading="lazy"
         />
-        <span className="absolute top-0 left-0 bg-slate-900 text-white text-[8px] font-black px-4 py-1.5 uppercase tracking-[0.2em] group-hover:bg-primary-red transition-colors z-10 font-[serif] italic rounded-br-[4px]">
+        <span className="absolute top-0 left-0 bg-slate-900 text-white text-[8px] font-black px-4 py-1.5 uppercase tracking-[0.2em] group-hover:bg-primary-red transition-colors z-10 font-serif italic rounded-br-[4px]">
           {category}
         </span>
       </Link>
