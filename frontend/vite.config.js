@@ -8,6 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'unsafe-none',
+    }
+  },
   optimizeDeps: {
     include: ['react-hot-toast'],
   },

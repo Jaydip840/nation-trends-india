@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const NewsContext = createContext();
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -11,7 +12,7 @@ export const NewsProvider = ({ children }) => {
   const [siteSettings, setSiteSettings] = useState({
     title: 'Nation Trends India',
     tagline: 'THE PULSE OF A NEW INDIA',
-    email: 'jatin2005@gmail.com',
+    email: 'nationtrendsindia.in@gmail.com',
     phone: '1111111111',
     address: 'Surat, Gujarat, India 395006',
     foundedYear: '2026',
@@ -55,7 +56,7 @@ export const NewsProvider = ({ children }) => {
       setSubscribers(subData);
       setUsers(userData);
     } catch (err) {
-      console.error('Data acquisition failure:', err);
+      console.error('Failed to load data:', err);
     } finally {
       setTimeout(() => setInitialLoading(false), 2000);
     }
@@ -66,11 +67,11 @@ export const NewsProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    if (email === 'admin@nationtrends.com' && password === 'admin123') {
-      const user = { name: 'Admin Bureau', email, role: 'admin' };
+    if (email === 'admin@gmail.com' && password === 'admin123') {
+      const user = { name: 'Admin', email, role: 'admin' };
       setCurrentUser(user);
       localStorage.setItem('nti_user', JSON.stringify(user));
-      return { success: true };
+      return { success: true, user };
     }
 
     try {
@@ -80,16 +81,37 @@ export const NewsProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
-      if (res.ok) {
-        const user = { ...data, role: 'user' };
+      if (res.ok && !data.error) {
+        const user = { ...data, role: data.role || 'user' };
         setCurrentUser(user);
         localStorage.setItem('nti_user', JSON.stringify(user));
-        return { success: true };
+        return { success: true, user };
       } else {
-        return { success: false, error: data.error };
+        return { success: false, error: data.error || 'Login failed.' };
       }
     } catch (err) {
-      return { success: false, error: 'Network failure in identity verification.' };
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  };
+
+  const googleLogin = async (token, isAccessToken = false) => {
+    try {
+      const res = await fetch(`${API_URL}/users/google-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, isAccessToken })
+      });
+      const data = await res.json();
+      if (res.ok && !data.error) {
+        const user = { ...data, role: data.role || 'user' };
+        setCurrentUser(user);
+        localStorage.setItem('nti_user', JSON.stringify(user));
+        return { success: true, ...user };
+      } else {
+        return { success: false, error: data.error || 'Authentication failed.' };
+      }
+    } catch (err) {
+      return { success: false, error: 'Authentication error.' };
     }
   };
 
@@ -108,7 +130,7 @@ export const NewsProvider = ({ children }) => {
         return { success: false, error: data.error };
       }
     } catch (err) {
-      return { success: false, error: 'Network failure in registry.' };
+      return { success: false, error: 'Network error during registration.' };
     }
   };
 
@@ -135,10 +157,53 @@ export const NewsProvider = ({ children }) => {
         const updated = { ...currentUser, savedArticles: data.savedArticles };
         setCurrentUser(updated);
         localStorage.setItem('nti_user', JSON.stringify(updated));
+        toast.success('Story saved.');
         return true;
       }
     } catch (err) {
+      toast.error('Could not save story.');
       console.error('Error saving article:', err);
+    }
+    return false;
+  };
+  
+  const unsaveArticle = async (articleId) => {
+    if (!currentUser || currentUser.role === 'admin') return;
+    try {
+      const res = await fetch(`${API_URL}/users/${currentUser._id}/unsave`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const updated = { ...currentUser, savedArticles: data.savedArticles };
+        setCurrentUser(updated);
+        localStorage.setItem('nti_user', JSON.stringify(updated));
+        toast.success('Story removed.');
+        return true;
+      }
+    } catch (err) {
+      toast.error('Could not remove story.');
+      console.error('Error unsaving article:', err);
+    }
+    return false;
+  };
+
+  const deleteUser = async (id) => {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    try {
+      const res = await fetch(`${API_URL}/users/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setUsers(users.filter(u => u._id !== id));
+        toast.success('User deleted.');
+        return true;
+      }
+    } catch (err) {
+      toast.error('Could not delete user.');
+      console.error('Error deleting user:', err);
     }
     return false;
   };
@@ -256,6 +321,20 @@ export const NewsProvider = ({ children }) => {
     }
   };
 
+  const replyToMessage = async (email, subject, message) => {
+    try {
+      const res = await fetch(`${API_URL}/messages/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, subject, message })
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Error replying to message:', err);
+      return false;
+    }
+  };
+
   const updateSiteSettings = async (settings) => {
     try {
       const res = await fetch(`${API_URL}/settings`, {
@@ -315,10 +394,12 @@ export const NewsProvider = ({ children }) => {
       currentUser,
       users,
       login,
+      googleLogin,
       register,
       logout,
       toggleBlockUser,
       saveArticle,
+      unsaveArticle,
       addArticle,
       updateArticle,
       deleteArticle,
@@ -330,6 +411,8 @@ export const NewsProvider = ({ children }) => {
       messages,
       addMessage,
       deleteMessage,
+      deleteUser,
+      replyToMessage,
       siteSettings,
       updateSiteSettings,
       breakingNews,

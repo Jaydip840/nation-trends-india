@@ -7,8 +7,12 @@ import Search from './pages/Search';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Legal from './pages/Legal';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import Support from './pages/Support';
 import Admin from './pages/Admin';
 import Auth from './pages/Auth';
+import Profile from './pages/Profile';
 import ScrollToTop from './components/ScrollToTop';
 
 import { useEffect } from 'react';
@@ -84,12 +88,16 @@ function App() {
             <Route path="category/:name" element={<Category />} />
             <Route path="search" element={<Search />} />
             <Route path="about" element={<About />} />
+            <Route path="about-us" element={<About />} />
             <Route path="contact" element={<Contact />} />
-            <Route path="privacy-policy" element={<Legal type="Privacy Policy" />} />
-            <Route path="terms" element={<Legal type="Terms & Conditions" />} />
+            <Route path="support" element={<Support />} />
+            <Route path="legal" element={<Legal Hub />} />
+            <Route path="privacy-policy" element={<Privacy />} />
+            <Route path="terms" element={<Terms />} />
             <Route path="disclaimer" element={<Legal type="Disclaimer" />} />
             <Route path="admin" element={<Admin />} />
             <Route path="auth" element={<Auth />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </Router>

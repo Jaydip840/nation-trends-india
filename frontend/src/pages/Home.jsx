@@ -5,12 +5,19 @@ import CategorySection from '../components/CategorySection';
 import { useNews } from '../context/NewsContext';
 
 const Home = () => {
-  const { articles } = useNews();
+  const { articles, breakingNews } = useNews();
   
-  const featuredArticle = articles?.[0] || {};
-  const secondaryArticles = articles?.slice(1, 4) || [];
+  // Sort articles: Breaking first, then by date
+  const sortedArticles = [...(articles || [])].sort((a, b) => {
+    if (a.placement === 'Breaking' && b.placement !== 'Breaking') return -1;
+    if (a.placement !== 'Breaking' && b.placement === 'Breaking') return 1;
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  const featuredArticle = sortedArticles[0] || {};
+  const secondaryArticles = sortedArticles.slice(1, 4) || [];
   
-  const getCategoryArticles = (cat) => articles?.filter(a => a.category?.toLowerCase() === cat.toLowerCase()) || [];
+  const getCategoryArticles = (cat) => sortedArticles.filter(a => a.category?.toLowerCase() === cat.toLowerCase()) || [];
 
   return (
     <>
@@ -24,7 +31,7 @@ const Home = () => {
         <span className="font-extrabold uppercase tracking-widest text-xs mr-4 whitespace-nowrap bg-white text-primary-red px-6 py-2 shadow-sm z-10 block italic rounded-[4px]">BREAKING</span>
         <div className="overflow-hidden w-full relative h-7 flex items-center">
           <p className="absolute whitespace-nowrap animate-marquee text-sm font-black tracking-wide text-white/90" style={{ animationDuration: '30s' }}>
-            {useNews().breakingNews} <span className="mx-20 text-white/30 italic">///</span> {useNews().breakingNews} <span className="mx-20 text-white/30 italic">///</span>
+            {breakingNews} <span className="mx-20 text-white/30 italic">///</span> {breakingNews} <span className="mx-20 text-white/30 italic">///</span>
           </p>
         </div>
       </div>
@@ -37,8 +44,8 @@ const Home = () => {
             <NewsCard article={featuredArticle} variant="large" />
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-              {secondaryArticles.map((article, idx) => (
-                <NewsCard key={idx} article={article} variant="medium" />
+              {secondaryArticles.map((article) => (
+                <NewsCard key={article?._id || article?.id} article={article} variant="medium" />
               ))}
             </div>
           </div>

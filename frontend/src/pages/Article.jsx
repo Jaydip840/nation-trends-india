@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 const Article = () => {
   const { slug } = useParams();
-  const { articles, incrementViewCount, currentUser, saveArticle } = useNews();
+  const { articles, incrementViewCount, currentUser, saveArticle, unsaveArticle } = useNews();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,7 +54,7 @@ const Article = () => {
   if (!article) {
     return (
       <div className="bg-white min-h-screen text-center py-20 font-black text-slate-300 uppercase tracking-widest">
-        Transmission Offline
+        Article Not Found
       </div>
     );
   }
@@ -102,15 +102,15 @@ const Article = () => {
                         <span className="text-primary-red font-black uppercase tracking-[0.4em] text-[10px]">
                             {article.category} News
                         </span>
-                        <h1 className="text-3xl md:text-6xl font-black text-slate-900 leading-[1.05] tracking-tighter uppercase italic">
+                        <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-[1.05] tracking-tighter uppercase italic">
                             {article.title}
                         </h1>
                         {article.subheadline && (
-                          <h2 className="text-xl md:text-2xl font-bold text-slate-500 leading-relaxed tracking-tight max-w-4xl pt-4">
+                          <h2 className="text-lg md:text-xl font-bold text-slate-500 leading-relaxed tracking-tight max-w-4xl pt-2">
                              {article.subheadline}
                           </h2>
                         )}
-                        <p className="text-slate-500 font-medium text-lg md:text-xl leading-relaxed italic max-w-3xl border-l-2 border-slate-100 pl-6 py-2 mt-6">
+                        <p className="text-slate-500 font-medium text-base md:text-lg leading-relaxed italic max-w-3xl border-l-2 border-slate-100 pl-6 py-2 mt-6">
                             {article.excerpt}
                         </p>
                     </div>
@@ -124,7 +124,7 @@ const Article = () => {
                           />
                           <div className="flex flex-col">
                             <span className="text-primary-red text-[11px] font-black uppercase tracking-widest">By {article.author}</span>
-                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">Editorial Bureau</span>
+                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">Editorial Team</span>
                           </div>
                        </div>
                        <div className="flex flex-col md:items-center justify-center md:border-x border-slate-100 px-6">
@@ -151,8 +151,13 @@ const Article = () => {
                                          toast.error('Account Restricted.');
                                          return;
                                      }
-                                     const res = await saveArticle(article.id);
-                                     if (res) toast.success('Story Saved.');
+                                     
+                                     const isSaved = currentUser.savedArticles?.includes(article.id);
+                                     if (isSaved) {
+                                         await unsaveArticle(article.id);
+                                     } else {
+                                         await saveArticle(article.id);
+                                     }
                                  }}
                                  className={`text-[10px] font-black uppercase tracking-[0.2em] px-5 py-2.5 border transition-all duration-300 rounded-[4px] ${
                                      currentUser?.savedArticles?.includes(article.id) 
@@ -191,20 +196,20 @@ const Article = () => {
                     article.content.map((block, index) => (
                       <div key={index} className="animate-fade-in">
                         {block.type === 'heading' && (
-                          <h3 className="text-2xl md:text-4xl font-black text-slate-900 uppercase italic tracking-tighter leading-tight mt-16 mb-8">
+                          <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-tight mt-12 mb-6">
                             {block.text}
                           </h3>
                         )}
                         
                         {block.type === 'paragraph' && (
-                          <p className={`text-slate-700 text-lg sm:text-2xl leading-relaxed font-medium font-serif mb-8 ${index === 0 ? 'drop-cap' : ''}`}>
+                          <p className={`text-slate-700 text-base md:text-[1.1rem] leading-relaxed font-medium font-serif mb-8 ${index === 0 ? 'drop-cap' : ''}`}>
                             {block.text}
                           </p>
                         )}
 
                         {block.type === 'quote' && (
-                          <div className="my-16 py-8 border-l-4 border-primary-red pl-10">
-                            <blockquote className="text-3xl md:text-5xl font-black text-slate-900 italic tracking-tighter leading-[1.1]">
+                          <div className="my-12 py-8 border-l-4 border-primary-red pl-10">
+                            <blockquote className="text-2xl md:text-3xl font-black text-slate-900 italic tracking-tighter leading-[1.1]">
                               "{block.text}"
                             </blockquote>
                             {block.author && (
@@ -235,7 +240,7 @@ const Article = () => {
                                 <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-950 text-white flex items-center justify-center text-[10px] font-black">
                                   {i + 1}
                                 </span>
-                                <span className="text-lg md:text-xl font-medium text-slate-700 leading-relaxed font-serif">
+                                <span className="text-base md:text-lg font-medium text-slate-700 leading-relaxed font-serif">
                                   {item}
                                 </span>
                               </li>
@@ -245,7 +250,7 @@ const Article = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="text-slate-800 text-lg sm:text-2xl leading-relaxed font-medium font-serif">
+                    <div className="text-slate-800 text-base md:text-[1.1rem] leading-relaxed font-medium font-serif">
                       {article.content?.split('\n').map((paragraph, idx) => (
                         paragraph.trim() && (
                           <p key={idx} className={`mb-8 last:mb-0 ${idx === 0 ? 'drop-cap' : ''}`}>

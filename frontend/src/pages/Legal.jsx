@@ -3,14 +3,82 @@ import Breadcrumb from '../components/Breadcrumb';
 import { useNews } from '../context/NewsContext';
 import { FiShield, FiFileText, FiInfo, FiLock, FiExternalLink, FiChevronRight, FiDatabase, FiCheckCircle, FiShieldOff, FiArrowRight } from 'react-icons/fi';
 
-const Legal = ({ type }) => {
+const Legal = ({ type, Hub }) => {
   const { siteSettings } = useNews();
   const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  if (Hub) {
+    return (
+      <>
+        <Helmet>
+          <title>Legal Center | {siteSettings.title}</title>
+        </Helmet>
+        <div className="bg-white min-h-screen">
+          <Breadcrumb items={[{ label: 'Legal Center', href: '#' }]} />
+          
+          <section className="max-w-7xl mx-auto px-4 md:px-6 pt-16 pb-20 text-center">
+            <span className="inline-block py-1 px-3 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">Transparency Portal</span>
+            <h1 className="text-4xl md:text-8xl font-black text-slate-900 tracking-tighter uppercase leading-tight mb-8">
+              Legal <span className="text-primary-red italic">HUB</span>
+            </h1>
+            <p className="max-w-2xl mx-auto text-slate-500 text-lg font-medium leading-relaxed italic">
+              "Governing our community with integrity, clarity, and total transparency."
+            </p>
+          </section>
+
+          <section className="max-w-7xl mx-auto px-4 md:px-6 pb-32">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { 
+                  title: 'Privacy Policy', 
+                  desc: 'How we manage, protect and utilize your personal data and digital identity.',
+                  icon: <FiLock />,
+                  link: '/privacy-policy'
+                },
+                { 
+                  title: 'Terms of Use', 
+                  desc: 'The essential rules and agreements for accessing our editorial platform.',
+                  icon: <FiFileText />,
+                  link: '/terms'
+                },
+                { 
+                  title: 'Cookie Disclaimer', 
+                  desc: 'Understanding the technology we use to enhance your reading experience.',
+                  icon: <FiShield />,
+                  link: '/disclaimer'
+                }
+              ].map((item, i) => (
+                <a 
+                  key={i} 
+                  href={item.link} 
+                  className="group bg-slate-50 p-12 border border-slate-100 hover:bg-slate-950 transition-all duration-700 rounded-sm relative overflow-hidden"
+                >
+                  <div className="w-12 h-12 bg-white flex items-center justify-center text-slate-900 group-hover:bg-primary-red group-hover:text-white transition-all duration-500 mb-8 rounded-sm shadow-sm group-hover:shadow-2xl">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-white uppercase italic tracking-tighter mb-4 transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-slate-500 group-hover:text-slate-400 text-sm font-medium leading-relaxed mb-8 transition-colors">
+                    {item.desc}
+                  </p>
+                  <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.4em] text-slate-950 group-hover:text-primary-red transition-all">
+                    <span>View Docs</span> 
+                    <FiArrowRight className="group-hover:translate-x-2 transition-transform" />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  }
 
   const getIcon = () => {
     if (type.toLowerCase().includes('privacy')) return <FiLock />;
     if (type.toLowerCase().includes('terms')) return <FiFileText />;
-    return <FiInfo />;
+    return <FiShield />;
   };
 
   return (
@@ -20,7 +88,7 @@ const Legal = ({ type }) => {
       </Helmet>
 
       <div className="bg-white min-h-screen">
-        <Breadcrumb items={[{ label: 'Legal Center', href: '#' }, { label: type, href: '#' }]} />
+        <Breadcrumb items={[{ label: 'Legal Center', href: '/legal' }, { label: type, href: '#' }]} />
 
         {/* ELEGANT HEADER - MATCHING CONTACT UI */}
         <section className="max-w-7xl mx-auto px-4 md:px-6 pt-16 pb-12">

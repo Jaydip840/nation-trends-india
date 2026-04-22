@@ -70,6 +70,14 @@
   }
 }
 
+@utility scrollbar-hide {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @utility line-clamp-* {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -130,4 +138,11 @@
 .vertical-text {
   writing-mode: vertical-rl;
   text-orientation: mixed;
+}
+
+.limit-2-lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
 }

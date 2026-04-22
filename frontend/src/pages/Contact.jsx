@@ -23,7 +23,7 @@ const Contact = () => {
         toast.error('Access Denied: Your account is blocked.');
         return;
     }
-    await addMessage(formData);
+    await addMessage({ ...formData, type: 'Normal' });
     setSubmitted(true);
     toast.success('Message Sent Successfully.');
   };

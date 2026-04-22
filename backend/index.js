@@ -9,6 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -146,6 +150,7 @@ const messageSchema = new mongoose.Schema({
   email: String,
   subject: String,
   message: String,
+  type: { type: String, enum: ['Normal', 'Support'], default: 'Normal' },
   date: { type: Date, default: Date.now }
 });
 
@@ -177,14 +182,90 @@ const Settings = mongoose.model('Settings', settingsSchema);
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
+  password: { type: String }, // Optional for Google users
+  role: { type: String, default: 'user' },
+  authMethod: { type: String, default: 'Standard' }, // 'Standard' or 'Google'
   isBlocked: { type: Boolean, default: false },
+  lastLogin: { type: Date, default: Date.now },
   savedArticles: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Article' }]
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 
 // --- ROUTES ---
+
+const { OAuth2Client } = require('google-auth-library');
+const GOOGLE_CLIENT_ID = '935042482901-kra0im5fkb0g1t2pjnhvuk2t5p9eg8mj.apps.googleusercontent.com';
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+// Real Google Token Verification
+app.post('/api/users/google-verify', async (req, res) => {
+  try {
+    const { token, isAccessToken } = req.body;
+    
+    if (!token) return res.status(400).json({ error: 'Missing token' });
+
+    let payload;
+
+    if (isAccessToken) {
+      // Manual fetch via https to be absolute about reliability
+      payload = await new Promise((resolve, reject) => {
+        https.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`, (gRes) => {
+          let data = '';
+          gRes.on('data', chunk => data += chunk);
+          gRes.on('end', () => {
+            try { resolve(JSON.parse(data)); }
+            catch (e) { reject(new Error('Failed to parse Google Bureau response')); }
+          });
+        }).on('error', reject);
+      });
+    } else {
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    }
+
+    if (!payload || !payload.email) {
+      return res.status(400).json({ error: 'Invalid identity response from Google.' });
+    }
+
+    const { sub, email, name, picture } = payload;
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (user.isBlocked) {
+        return res.json({ error: 'Access Denied. Your account has been suspended.' });
+      }
+      user.lastLogin = new Date();
+      user.authMethod = 'Google'; // Record that they used Google
+      if (!user.name && name) user.name = name;
+      await user.save();
+    } else {
+      user = new User({
+        name: name || email.split('@')[0],
+        email,
+        password: `GOOGLE_AUTH_${(sub || Date.now()).toString().substring(0, 8)}`,
+        authMethod: 'Google',
+        lastLogin: new Date()
+      });
+      await user.save();
+    }
+    
+    // Return sanitized user data
+    res.json({
+       _id: user._id,
+       name: user.name,
+       email: user.email,
+       role: user.role,
+       savedArticles: user.savedArticles
+    });
+  } catch (err) {
+    console.error('CRITICAL IDENTITY FAILURE:', err.message);
+    res.status(500).json({ error: 'Identity verification system error.' });
+  }
+});
 
 // Articles
 app.get('/api/articles', async (req, res) => {
@@ -203,13 +284,13 @@ app.post('/api/articles', async (req, res) => {
 
     const newArticle = new Article(req.body);
     const saved = await newArticle.save();
-    
+
     // BROADCAST TO SUBSCRIBERS
     try {
       const activeSubs = await Subscriber.find({ isBlocked: false });
       if (activeSubs.length > 0) {
         console.log(`Broadcasting new article to ${activeSubs.length} intelligence recipients...`);
-        
+
         const newsAlertTemplate = (article) => `
           <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #f1f5f9; border-radius: 12px; overflow: hidden; background-color: #ffffff;">
             <div style="background-color: #0f172a; padding: 20px 10px; text-align: center;">
@@ -244,7 +325,7 @@ app.post('/api/articles', async (req, res) => {
               html: newsAlertTemplate(saved)
             });
           } catch (e) {
-             console.error(`Failed to notify ${sub.email}:`, e.message);
+            console.error(`Failed to notify ${sub.email}:`, e.message);
           }
         });
       }
@@ -293,7 +374,7 @@ app.get('/api/settings', async (req, res) => {
       settings = await Settings.create({
         title: 'Nation Trends India',
         tagline: 'THE PULSE OF A NEW INDIA',
-        email: 'jatin2005@gmail.com',
+        email: 'nationtrendsindia.in@gmail.com',
         phone: '1111111111',
         address: 'Surat, Gujarat, India 395006',
         foundedYear: '2026',
@@ -477,7 +558,7 @@ app.post('/api/ai/pulse', async (req, res) => {
   try {
     const selected = narratives[Math.floor(Math.random() * narratives.length)];
     const slug = selected.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') + '-' + Date.now();
-    
+
     const newArticle = new Article({
       ...selected,
       slug,
@@ -525,7 +606,7 @@ app.post('/api/ai/pulse', async (req, res) => {
               html: newsAlertTemplate(saved)
             });
           } catch (e) {
-             console.error(`Failed to notify ${sub.email}:`, e.message);
+            console.error(`Failed to notify ${sub.email}:`, e.message);
           }
         });
       }
@@ -545,7 +626,7 @@ app.post('/api/users/register', async (req, res) => {
     const { name, email, password } = req.body;
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ error: 'Identity already registered.' });
-    
+
     const user = new User({ name, email, password });
     await user.save();
     res.json(user);
@@ -559,12 +640,31 @@ app.post('/api/users/login', async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user || user.password !== password) {
-      return res.status(400).json({ error: 'Invalid identification credentials.' });
+      return res.json({ error: 'Invalid email or password.' });
     }
     if (user.isBlocked) {
-      return res.status(403).json({ error: 'Access Denied. Your identity has been restricted by the NTI Bureau.' });
+      return res.json({ error: 'Access Denied. Your account has been suspended.' });
     }
+    
+    user.lastLogin = new Date();
+    await user.save();
+    
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/messages/reply', async (req, res) => {
+  const { email, subject, message } = req.body;
+  try {
+    await transporter.sendMail({
+      from: `"Nation Trends India Team" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Re: ${subject}`,
+      html: getPremiumTemplate('Support Response', `<p>Hello,</p><p>Regarding your inquiry about <strong>${subject}</strong>:</p><p>${message}</p><p>Best regards,<br/>Nation Trends India Team</p>`)
+    });
+    res.json({ success: true, message: 'Reply sent successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -582,9 +682,49 @@ app.get('/api/users', async (req, res) => {
 app.patch('/api/users/:id/block', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
     user.isBlocked = !user.isBlocked;
     await user.save();
+
+    // Send Email Notification
+    const statusLabel = user.isBlocked ? 'Suspended' : 'Restored';
+    const title = user.isBlocked ? 'Account Suspension' : 'Account Restored';
+    const emailContent = user.isBlocked 
+      ? `<p>Dear <strong>${user.name || 'User'}</strong>,</p>
+         <p>We would like to inform you that your account on <strong>Nation Trends India</strong> has been temporarily suspended due to a violation of our community guidelines.</p>
+         <p>This action has been taken to ensure a safe and secure experience for all users on our platform. The suspension is temporary and will remain in effect until further review. During this period, you will not be able to access or use certain features of your account.</p>
+         <p>After the review period ends or upon further assessment, your account access may be restored. We encourage you to review our guidelines to avoid similar actions in the future.</p>
+         <p>If you believe this action has been taken in error or would like further clarification, please feel free to contact our support team at <a href="mailto:support@nationtrends.in" style="color: #e53e3e; font-weight: bold; text-decoration: none;">support@nationtrends.in</a>.</p>
+         <p>We appreciate your understanding and cooperation.</p>
+         <p>Sincerely,<br/><strong>Nation Trends India Team</strong></p>`
+      : `<p>Dear <strong>${user.name || 'User'}</strong>,</p>
+         <p>Great news! Your account on <strong>Nation Trends India</strong> has been <strong>successfully restored</strong>. You now have full access to our journalism, your profile, and all saved reports.</p>
+         <p>We appreciate your presence in our news community and look forward to your continued engagement.</p>
+         <p>Sincerely,<br/><strong>Nation Trends India Team</strong></p>`;
+
+    try {
+      await transporter.sendMail({
+        from: `"Nation Trends India" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: `[Account Update] Your access has been ${statusLabel}`,
+        html: getPremiumTemplate(title, emailContent)
+      });
+    } catch (mailErr) {
+      console.error(`Status email failed for ${user.email}:`, mailErr.message);
+    }
+
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ success: true, message: 'User deleted.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -595,8 +735,8 @@ app.post('/api/users/:id/save', async (req, res) => {
     const user = await User.findById(req.params.id);
     const { articleId } = req.body;
     if (!user.savedArticles.includes(articleId)) {
-        user.savedArticles.push(articleId);
-        await user.save();
+      user.savedArticles.push(articleId);
+      await user.save();
     }
     res.json(user);
   } catch (err) {
@@ -604,55 +744,18 @@ app.post('/api/users/:id/save', async (req, res) => {
   }
 });
 
-// External News Discovery Proxy (NewsAPI.org) using native HTTPS with Headers
-app.get('/api/external-news', (req, res) => {
-  const API_KEY = process.env.NEWS_API_KEY || '2582877960d740c087968593a1f185c8';
-  const query = req.query.q || '';
-  const endpoint = query 
-    ? `/v2/everything?q=${encodeURIComponent(query)}&pageSize=6&apiKey=${API_KEY}`
-    : `/v2/top-headlines?country=in&pageSize=6&apiKey=${API_KEY}`;
-  
-  const options = {
-    hostname: 'newsapi.org',
-    path: endpoint,
-    headers: {
-      'User-Agent': 'NationTrendsIndia/1.0'
-    }
-  };
-
-  https.get(options, (apiRes) => {
-    let rawData = '';
-    apiRes.on('data', (chunk) => { rawData += chunk; });
-    apiRes.on('end', () => {
-      try {
-        const parsed = JSON.parse(rawData);
-        
-        if (apiRes.statusCode !== 200 || !parsed.articles) {
-          // Return Robust Prestige Fallbacks
-          return res.json([
-            { id: 991, title: "Special Report: India's Infrastructure Revolution 2026", category: "India", trend: "Critical", image: "https://images.unsplash.com/photo-1540910419892-4a36d2c3266c?auto=format&fit=crop&q=80&w=800", description: "A comprehensive audit of the mega-structures defining the new Indian skyline...", source: "Internal Bureau" },
-            { id: 992, title: "Tech Pulse: The Rise of Bengaluru's Silicon Corridor", category: "Technology", trend: "Rising", image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800", description: "Investigating the next phase of India's digital dominance in the global market...", source: "Tech Intel" },
-            { id: 993, title: "IPL 2026: Epic Showdown in Wankhede Tonight", category: "Sports", trend: "Viral", image: "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&q=80&w=800", description: "The financial capital braces for high-intensity cricket...", source: "Sports Bureau" }
-          ]);
-        }
-
-        const formatted = parsed.articles.map((art, idx) => ({
-          id: idx + 900,
-          title: art.title,
-          category: query ? (query.charAt(0).toUpperCase() + query.slice(1)) : 'India',
-          trend: 'Latest',
-          image: art.urlToImage || `https://images.unsplash.com/photo-1585829365234-781fcd50c40b?auto=format&fit=crop&q=80&w=800`,
-          description: art.description || "Synthesizing full investigative documentation...",
-          source: art.source.name
-        }));
-        res.json(formatted);
-      } catch (e) {
-        res.status(500).json({ error: 'Data parsing failed.' });
-      }
-    });
-  }).on('error', (err) => {
-    res.status(500).json({ error: 'Connection failed.' });
-  });
+app.post('/api/users/:id/unsave', async (req, res) => {
+  try {
+    const { articleId } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { savedArticles: articleId } },
+      { new: true }
+    );
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 5000;

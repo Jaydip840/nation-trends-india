@@ -29,14 +29,14 @@ const Newsletter = () => {
                           <span className="text-primary-red">Informed.</span>
                       </h2>
                       <p className="text-slate-500 font-medium text-base md:text-lg leading-relaxed max-w-lg italic">
-                          Join the next generation of investigative readers. Get high-impact professional updates and expert perspectives directly from our central bureau.
+                          Join the next generation of investigative readers. Get high-impact professional updates and expert perspectives directly from our editorial team.
                       </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 pt-10 border-t border-slate-50">
                       <div className="flex flex-col items-center lg:items-start space-y-3">
                           <FiShield className="text-primary-red" size={24} />
-                          <p className="text-slate-900 text-[10px] font-black uppercase tracking-widest leading-tight">Verified <br/> Intelligence</p>
+                          <p className="text-slate-900 text-[10px] font-black uppercase tracking-widest leading-tight">Verified <br/> Reporting</p>
                       </div>
                       <div className="flex flex-col items-center lg:items-start space-y-3">
                           <FiUserCheck className="text-primary-red" size={24} />
@@ -62,14 +62,14 @@ const Newsletter = () => {
                                    <FiUserCheck size={36} className="text-slate-900 group-hover:text-primary-red transition-colors" />
                                </div>
                            </div>
-                           <div className="space-y-2">
-                               <h4 className="text-slate-900 font-black text-2xl uppercase tracking-tight">
-                                  {currentUser ? 'VERIFIED MEMBER' : 'IDENTITY PORTAL'}
-                               </h4>
-                               <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">
-                                  {currentUser ? `Welcome back, ${currentUser.name}` : 'Sign up to authenticate your access'}
-                                </p>
-                           </div>
+                            <div className="space-y-2">
+                                <h4 className="text-slate-900 font-black text-2xl uppercase tracking-tight">
+                                   {currentUser ? 'VERIFIED MEMBER' : 'MEMBER LOGIN'}
+                                </h4>
+                                <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">
+                                   {currentUser ? `Welcome back, ${currentUser.name}` : 'Sign up for exclusive news access'}
+                                 </p>
+                            </div>
                        </div>
 
                        <div className="space-y-4">

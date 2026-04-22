@@ -54,8 +54,10 @@ const Navbar = () => {
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={handleConfirmLogout}
-        title="Admin Logout"
-        message="Are you sure you want to end your administrative session? You will be returned to the public homepage."
+        title="Log Out"
+        message={currentUser?.role === 'admin' 
+          ? "Are you sure you want to log out of the Admin Panel? This will return you to the homepage."
+          : "Are you sure you want to log out of your account?"}
       />
 
       <header
@@ -126,16 +128,16 @@ const Navbar = () => {
             <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="text-slate-400 hover:text-slate-900 transition-colors"><FiSearch size={20} /></button>
 
             {currentUser ? (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-6">
                 {currentUser.role === 'admin' ? (
                   <Link to="/admin" className="text-white bg-slate-900 px-6 py-2.5 font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors rounded-[4px]">Admin Panel</Link>
                 ) : (
-                  <div className="bg-slate-50 border border-slate-100 px-6 py-2.5 flex items-center gap-2 rounded-[4px]">
-                    <FiShield className="text-primary-red" size={12} />
+                  <Link to="/profile" className="flex items-center gap-3 bg-white border border-slate-200 px-6 py-2.5 hover:border-primary-red transition-all duration-300 rounded-[4px] group">
+                    <FiUser className="text-slate-400 group-hover:text-primary-red transition-colors" size={16} />
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">{currentUser.name}</span>
-                  </div>
+                  </Link>
                 )}
-                <button onClick={() => setIsLogoutModalOpen(true)} className="text-slate-300 hover:text-primary-red transition-colors"><FiLogOut size={20} /></button>
+                <button onClick={() => setIsLogoutModalOpen(true)} className="text-slate-300 hover:text-primary-red transition-colors active:scale-95"><FiLogOut size={20} /></button>
               </div>
             ) : (
               <Link to="/auth" className="text-white bg-primary-red px-8 py-3 font-black text-[11px] uppercase tracking-[0.4em] shadow-[0_10px_20px_-5px_rgba(229,62,62,0.3)] hover:bg-red-700 transition-all duration-300 transform active:scale-95 rounded-[4px]">LOGIN / SIGNUP</Link>
@@ -146,7 +148,7 @@ const Navbar = () => {
           <div className="md:hidden flex items-center justify-between w-full">
             <div className="flex items-center space-x-3">
               {currentUser && (
-                <Link to={currentUser.role === 'admin' ? '/admin' : '/auth'} className="w-10 h-10 bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm transition-all active:scale-90 rounded-[4px]">
+                <Link to={currentUser.role === 'admin' ? '/admin' : '/profile'} className="w-10 h-10 bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm transition-all active:scale-90 rounded-[4px]">
                   <FiUser size={18} />
                 </Link>
               )}
@@ -206,15 +208,18 @@ const Navbar = () => {
                     <div className="w-2 h-2 bg-slate-200 group-active:bg-primary-red transition-all"></div>
                     CONTACT
                   </Link>
-                 <Link to="/privacy-policy" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] p-4 transition-all active:scale-95 active:bg-slate-50 border-b border-slate-50">Privacy Policy</Link>
+                 <Link to="/legal" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] relative flex items-center gap-3 p-4 transition-all active:scale-95 active:bg-slate-50 group border-b border-slate-50">
+                    <div className="w-2 h-2 bg-slate-200 group-active:bg-emerald-500 transition-all"></div>
+                    LEGAL PANEL
+                 </Link>
                  
                  <div className="p-4">
                   {currentUser ? (
                       <div className="flex flex-col space-y-4">
-                          <div className="flex items-center gap-3 py-4 border-b border-slate-50">
+                          <Link to={currentUser.role === 'admin' ? '/admin' : '/profile'}  className="flex items-center gap-3 py-4 border-b border-slate-50 transition-all active:scale-95 active:bg-slate-50 group">
                               <FiUser className="text-primary-red" size={20}/>
                               <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{currentUser.name}</span>
-                          </div>
+                          </Link>
                           {currentUser.role === 'admin' && (
                               <Link to="/admin" className="text-emerald-500 font-black text-sm uppercase tracking-widest p-2">Admin Panel</Link>
                           )}

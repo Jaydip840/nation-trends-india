@@ -55,7 +55,7 @@ const Footer = () => {
               {['Home', 'About Us', 'Contact'].map((item) => (
                 <li key={item}>
                     <Link 
-                        to={item === 'Home' ? '/' : `/${item.toLowerCase().replace(' ', '-')}`} 
+                        to={item === 'Home' ? '/' : (item === 'About Us' ? '/about' : `/${item.toLowerCase().replace(' ', '-')}`)} 
                         className="text-[11px] font-black uppercase tracking-widest text-slate-300 hover:text-white hover:pl-2 transition-all duration-300"
                     >
                         {item}
@@ -101,6 +101,11 @@ const Footer = () => {
                         <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic">Head Office</span>
                         <span className="text-[10px] font-bold text-slate-300 leading-tight">{siteSettings.address}</span>
                     </div>
+                    <div className="flex flex-col gap-1 pt-2 text-[10px] font-bold text-slate-400">
+                        <Link to="/contact" className="hover:text-primary-red transition-all">Report Leak</Link>
+                        <Link to="/support" className="hover:text-primary-red transition-all">Support Desk</Link>
+                        <Link to="/legal" className="hover:text-primary-red transition-all">Legal Panel</Link>
+                    </div>
                 </div>
                 <Link to="/auth" className="flex items-center justify-center gap-3 w-full py-3 bg-slate-900 border border-slate-700 hover:border-primary-red transition-all duration-500 group rounded-[4px]">
                     <FiShield className="text-primary-red" size={12} />
@@ -117,6 +122,7 @@ const Footer = () => {
             <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em]">
                 &copy; {currentYear} {siteSettings.title}
             </span>
+            <Link to="/legal" className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-[0.4em] transition-colors">Legal Panel</Link>
             <div className="h-1 w-1 bg-slate-700 rounded-full hidden md:block"></div>
             <Link to="/privacy-policy" className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-[0.4em] transition-colors">Privacy Policy</Link>
             <Link to="/terms" className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-[0.4em] transition-colors">Terms of Use</Link>

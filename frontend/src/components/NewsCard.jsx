@@ -21,12 +21,12 @@ const NewsCard = ({ article, variant = 'medium' }) => {
         </Link>
         <div className="pt-6 md:pt-8 flex flex-col">
           <Link to={articleLink}>
-            <h2 className="text-2xl md:text-4xl font-black text-slate-900 mb-3 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.85] italic uppercase tracking-tightest">
+            <h2 className="text-xl md:text-3xl font-black text-slate-900 mb-3 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.85] italic uppercase tracking-tightest">
               {title}
             </h2>
           </Link>
           <div className="w-10 h-0.5 bg-primary-red mb-4"></div>
-          <p className="text-slate-500 mb-4 line-clamp-3 text-base md:text-lg leading-relaxed font-medium italic max-w-2xl">{excerpt}</p>
+          <p className="text-slate-500 mb-4 line-clamp-3 text-sm md:text-base leading-relaxed font-medium italic max-w-2xl">{excerpt}</p>
           <div className="flex items-center text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">
             <span className="text-slate-900 mr-4 border-b border-slate-100 pb-0.5">{author}</span>
             <span className="opacity-20 mr-4">/</span>
