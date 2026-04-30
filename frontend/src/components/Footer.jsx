@@ -69,10 +69,10 @@ const Footer = () => {
           <div className="lg:col-span-3 space-y-4">
             <h4 className="text-[10px] font-black uppercase tracking-[0.5em] text-primary-red italic mb-4">Categories</h4>
             <div className="grid grid-cols-1 gap-y-2">
-              {['India', 'World News', 'Technology', 'Politics', 'Business'].map((cat) => (
+              {['India', 'World', 'Politics', 'Business', 'Technology', 'Entertainment', 'Sports'].map((cat) => (
                 <Link 
                     key={cat} 
-                    to={`/category/${cat.toLowerCase().split(' ')[0]}`} 
+                    to={`/category/${cat.toLowerCase()}`} 
                     className="flex justify-between items-center group border-b border-slate-800 pb-1"
                 >
                     <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 group-hover:text-white transition-colors">

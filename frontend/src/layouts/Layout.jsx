@@ -67,21 +67,21 @@ const Layout = () => {
 
       {/* Floating Action Buttons */}
       {!isAdmin && (
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col space-y-2">
+        <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 flex flex-col space-y-2">
           <button 
             onClick={scrollToTop}
-            className={`bg-slate-900 text-white p-4 shadow-2xl hover:bg-primary-red transition-all duration-300 focus:outline-none rounded-[4px] ${showScrollUp ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}
+            className={`bg-slate-900 text-white p-3 md:p-4 shadow-2xl hover:bg-primary-red transition-all duration-300 focus:outline-none rounded-[4px] ${showScrollUp ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}
             aria-label="Scroll to top"
           >
-            <FiArrowUp className="text-xl" />
+            <FiArrowUp className="text-base md:text-lg" />
           </button>
           
           <button 
             onClick={scrollToBottom}
-            className={`bg-slate-900 text-white p-4 shadow-2xl hover:bg-primary-red transition-all duration-300 focus:outline-none rounded-[4px] ${showScrollDown ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}
+            className={`bg-slate-900 text-white p-3 md:p-4 shadow-2xl hover:bg-primary-red transition-all duration-300 focus:outline-none rounded-[4px] ${showScrollDown ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}
             aria-label="Scroll to bottom"
           >
-            <FiArrowDown className="text-xl" />
+            <FiArrowDown className="text-base md:text-lg" />
           </button>
         </div>
       )}

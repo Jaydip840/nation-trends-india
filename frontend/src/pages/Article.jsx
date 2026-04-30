@@ -62,8 +62,52 @@ const Article = () => {
   return (
     <>
       <Helmet>
-        <title>{article.metaTitle || article.title} | {article.category}</title>
-        <meta name="description" content={article.metaDescription || article.excerpt} />
+        {/* Basic Meta Tags */}
+        <title>{article.metaTitle || article.title} | Nation Trends India</title>
+        <meta name="description" content={article.metaDescription || article.subheadline || article.excerpt} />
+        <meta name="keywords" content={article.tags || `${article.category}, news, india, ${article.title}`} />
+        <link rel="canonical" href={shareUrl} />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={shareUrl} />
+        <meta property="og:title" content={article.metaTitle || article.title} />
+        <meta property="og:description" content={article.metaDescription || article.subheadline || article.excerpt} />
+        <meta property="og:image" content={article.image} />
+        <meta property="og:site_name" content="Nation Trends India" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={shareUrl} />
+        <meta name="twitter:title" content={article.metaTitle || article.title} />
+        <meta name="twitter:description" content={article.metaDescription || article.subheadline || article.excerpt} />
+        <meta name="twitter:image" content={article.image} />
+
+        {/* Structured Data (JSON-LD) */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": article.title,
+            "image": [article.image],
+            "datePublished": new Date(article.createdAt || Date.now()).toISOString(),
+            "dateModified": new Date(article.updatedAt || Date.now()).toISOString(),
+            "author": [{
+              "@type": "Person",
+              "name": article.author || "JC",
+              "url": `${shareUrl.split('/article/')[0]}/profile`
+            }],
+            "publisher": {
+              "@type": "Organization",
+              "name": "Nation Trends India",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://nationtrendsindia.com/nt-favicon.png"
+              }
+            },
+            "description": article.metaDescription || article.subheadline || article.excerpt
+          })}
+        </script>
       </Helmet>
 
       <div className="bg-white min-h-screen">
@@ -177,7 +221,7 @@ const Article = () => {
                   <div className="aspect-video overflow-hidden bg-slate-100 group rounded-[4px]">
                     <img 
                         src={article.image} 
-                        alt={article.title} 
+                        alt={article.imageAlt || article.title} 
                         className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000" 
                     />
                   </div>
@@ -190,12 +234,27 @@ const Article = () => {
                    )}
                 </div>
 
+                {/* KEY HIGHLIGHTS */}
+                {article.highlights && article.highlights.length > 0 && article.highlights.some(h => h.trim() !== '') && (
+                  <div className="mt-12 p-8 lg:p-10 bg-slate-50 border-l-4 border-primary-red rounded-sm">
+                    <h4 className="text-[10px] font-black text-primary-red uppercase tracking-[0.4em] mb-6 italic">Strategic Highlights</h4>
+                    <ul className="space-y-4">
+                      {article.highlights.filter(h => h.trim() !== '').map((h, i) => (
+                        <li key={i} className="flex gap-4 items-start">
+                          <div className="w-1.5 h-1.5 bg-slate-900 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <p className="text-sm md:text-base text-slate-700 font-bold leading-tight">{h}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {/* CONTENT ENGINE */}
                 <div className="space-y-12 py-12">
                   {Array.isArray(article.content) ? (
                     article.content.map((block, index) => (
                       <div key={index} className="animate-fade-in">
-                        {block.type === 'heading' && (
+                        {(block.type === 'heading' || block.type === 'subheading') && (
                           <h3 className="text-xl md:text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-tight mt-12 mb-6">
                             {block.text}
                           </h3>
@@ -205,6 +264,28 @@ const Article = () => {
                           <p className={`text-slate-700 text-base md:text-[1.1rem] leading-relaxed font-medium font-serif mb-8 ${index === 0 ? 'drop-cap' : ''}`}>
                             {block.text}
                           </p>
+                        )}
+
+                        {block.type === 'faq' && block.items && (
+                          <div className="my-12 space-y-8 bg-slate-50 p-8 lg:p-12 border-y border-slate-100">
+                             <h4 className="text-[10px] font-black text-primary-red uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
+                               <div className="w-8 h-px bg-primary-red"></div>
+                               Frequently Asked Questions
+                             </h4>
+                             <div className="space-y-10">
+                                {block.items.map((faq, i) => (
+                                  <div key={i} className="space-y-4">
+                                    <div className="flex gap-4">
+                                      <span className="text-primary-red font-black italic">Q.</span>
+                                      <h5 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight">{faq.q}</h5>
+                                    </div>
+                                    <div className="flex gap-4 pl-6">
+                                      <p className="text-base text-slate-600 font-medium leading-relaxed font-serif">{faq.a}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                             </div>
+                          </div>
                         )}
 
                         {block.type === 'quote' && (
@@ -220,13 +301,13 @@ const Article = () => {
                           </div>
                         )}
 
-                        {block.type === 'image' && block.url && (
+                        {(block.type === 'image' || block.type === 'subimage') && block.url && (
                           <div className="my-16 space-y-4">
                             <div className="rounded-[4px] overflow-hidden bg-slate-50">
-                              <img src={block.url} alt={block.caption} className="w-full h-auto" />
+                              <img src={block.url} alt={block.caption} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-[1500ms]" />
                             </div>
                             {block.caption && (
-                              <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                 {block.caption}
                               </p>
                             )}
@@ -235,7 +316,7 @@ const Article = () => {
 
                         {block.type === 'list' && block.items && (
                           <ul className="space-y-6 my-12">
-                            {block.items.filter(item => item.trim()).map((item, i) => (
+                            {block.items.filter(item => typeof item === 'string' && item.trim()).map((item, i) => (
                               <li key={i} className="flex gap-6 items-start">
                                 <span className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-950 text-white flex items-center justify-center text-[10px] font-black">
                                   {i + 1}

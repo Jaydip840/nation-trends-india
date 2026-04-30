@@ -4,7 +4,7 @@ import { FiSearch, FiMenu, FiX, FiUser, FiLogOut, FiLayout, FiShield, FiChevronD
 import { useNews } from '../context/NewsContext';
 import ConfirmModal from './ConfirmModal';
 
-const categories = ['India', 'World', 'Politics', 'Technology', 'Business', 'Entertainment', 'Sports'];
+const categories = ['India', 'World', 'Investigation', 'Exclusive', 'Politics', 'Technology', 'Business', 'Climate', 'Culture', 'Entertainment', 'Sports'];
 
 const Navbar = () => {
   const { currentUser, logout } = useNews();
@@ -147,11 +147,6 @@ const Navbar = () => {
           {/* MOBILE INTERFACE */}
           <div className="md:hidden flex items-center justify-between w-full">
             <div className="flex items-center space-x-3">
-              {currentUser && (
-                <Link to={currentUser.role === 'admin' ? '/admin' : '/profile'} className="w-10 h-10 bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 shadow-sm transition-all active:scale-90 rounded-[4px]">
-                  <FiUser size={18} />
-                </Link>
-              )}
 
               <Link to="/" className="flex items-center ml-1 group" onClick={() => setMobileMenuOpen(false)}>
                 <div className="flex items-center justify-center bg-primary-red w-9 h-9 mr-2 shadow-md shadow-red-200 transform group-hover:rotate-12 transition duration-300 rounded-[4px]">
@@ -182,55 +177,68 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* REVERTED MOBILE MENU (SIMPLE DROPDOWN) */}
-        <div className={`md:hidden absolute w-full left-0 top-full bg-white border-b border-slate-100 shadow-xl transition-all duration-500 overflow-hidden ${mobileMenuOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-          <div className="px-6 py-8 flex flex-col space-y-6">
-               <Link to="/" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] relative flex items-center gap-3 p-4 transition-all active:scale-95 active:bg-slate-50 group border-b border-slate-50">
-                 <div className="w-2 h-2 bg-primary-red group-active:scale-150 transition-transform"></div>
-                 HOME
+        {/* MODERN MOBILE MENU (CLEAN & MINIMAL) */}
+        <div className={`md:hidden fixed inset-x-0 top-full bg-white/98 backdrop-blur-xl border-b border-slate-100 shadow-2xl transition-all duration-500 ease-in-out transform ${mobileMenuOpen ? 'translate-y-0 opacity-100 visible' : '-translate-y-4 opacity-0 invisible'}`} style={{ maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' }}>
+          <div className="px-6 py-10 flex flex-col">
+            {/* MAIN LINKS */}
+            <div className="grid grid-cols-1 gap-1 mb-6">
+               <Link to="/" className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all group">
+                 <span className="text-base font-black text-slate-900 uppercase tracking-widest group-hover:text-primary-red transition-colors">Home</span>
+                 <div className="w-2 h-2 bg-primary-red rounded-full opacity-0 group-hover:opacity-100 transition-all scale-0 group-hover:scale-100"></div>
                </Link>
-               <div className="space-y-4 px-4 py-2">
-                  <span className="text-slate-300 font-black text-[9px] uppercase tracking-[0.4em] block pl-2">Categories</span>
-                  <div className="grid grid-cols-2 gap-3">
-                     {categories.map(cat => (
-                        <Link key={cat} to={`/category/${cat.toLowerCase()}`} className="text-slate-600 font-extrabold text-[10px] uppercase tracking-[0.2em] p-3 border border-slate-50 hover:border-primary-red transition-all active:scale-90 active:bg-slate-50 active:text-primary-red rounded-[4px]">
-                           {cat}
+               <Link to="/about" className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all group">
+                 <span className="text-base font-black text-slate-900 uppercase tracking-widest group-hover:text-primary-red transition-colors">About</span>
+                 <div className="w-2 h-2 bg-primary-red rounded-full opacity-0 group-hover:opacity-100 transition-all scale-0 group-hover:scale-100"></div>
+               </Link>
+               <Link to="/contact" className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-all group">
+                 <span className="text-base font-black text-slate-900 uppercase tracking-widest group-hover:text-primary-red transition-colors">Contact</span>
+                 <div className="w-2 h-2 bg-primary-red rounded-full opacity-0 group-hover:opacity-100 transition-all scale-0 group-hover:scale-100"></div>
+               </Link>
+            </div>
+
+            {/* CATEGORIES ACCORDION */}
+            <div className="mb-8 overflow-hidden">
+               <button 
+                  onClick={() => setCategoriesOpen(!categoriesOpen)}
+                  className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all"
+               >
+                  <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.4em]">Browse Categories</span>
+                  <FiChevronDown className={`w-4 h-4 transition-transform duration-300 ${categoriesOpen ? 'rotate-180' : ''}`} />
+               </button>
+               
+               <div className={`transition-all duration-500 ease-in-out overflow-hidden ${categoriesOpen ? 'max-h-[1000px] mt-4 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className="grid grid-cols-2 gap-2">
+                     {categories.map((cat) => (
+                        <Link key={cat} to={`/category/${cat.toLowerCase()}`} className="p-4 bg-gray-50/30 border border-slate-50 rounded-xl hover:bg-white hover:border-primary-red/20 transition-all flex flex-col group">
+                           <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider group-hover:text-primary-red transition-colors">{cat}</span>
                         </Link>
                      ))}
                   </div>
                </div>
-               <div className="pt-2 border-t border-slate-50 flex flex-col">
-                  <Link to="/about" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] relative flex items-center gap-3 p-4 transition-all active:scale-95 active:bg-slate-50 group border-b border-slate-50">
-                    <div className="w-2 h-2 bg-slate-200 group-active:bg-primary-red transition-all"></div>
-                    ABOUT
+            </div>
+
+            {/* USER ACTIONS */}
+            <div className="mt-auto pt-6 border-t border-slate-100">
+               {currentUser ? (
+                  <div className="flex flex-col gap-3">
+                     <Link to={currentUser.role === 'admin' ? '/admin' : '/profile'} className="flex items-center gap-4 p-4 rounded-xl bg-slate-900 text-white shadow-lg shadow-slate-200 group">
+                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center group-hover:bg-primary-red transition-colors">
+                           <FiUser size={16} />
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-xs font-black uppercase tracking-widest">{currentUser.name}</span>
+                           <span className="text-[8px] font-bold text-white/50 uppercase tracking-widest">{currentUser.role} Account</span>
+                        </div>
+                     </Link>
+                     <button onClick={() => setIsLogoutModalOpen(true)} className="w-full p-4 rounded-xl border border-red-50 text-primary-red font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all">
+                        Sign Out
+                     </button>
+                  </div>
+               ) : (
+                  <Link to="/auth" className="w-full p-5 bg-primary-red text-white font-black text-sm uppercase tracking-[0.4em] text-center rounded-xl shadow-xl shadow-red-100 active:scale-95 transition-all block">
+                     Login / Signup
                   </Link>
-                  <Link to="/contact" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] relative flex items-center gap-3 p-4 transition-all active:scale-95 active:bg-slate-50 group border-b border-slate-50">
-                    <div className="w-2 h-2 bg-slate-200 group-active:bg-primary-red transition-all"></div>
-                    CONTACT
-                  </Link>
-                 <Link to="/legal" className="text-slate-900 font-black text-sm uppercase tracking-[0.3em] relative flex items-center gap-3 p-4 transition-all active:scale-95 active:bg-slate-50 group border-b border-slate-50">
-                    <div className="w-2 h-2 bg-slate-200 group-active:bg-emerald-500 transition-all"></div>
-                    LEGAL PANEL
-                 </Link>
-                 
-                 <div className="p-4">
-                  {currentUser ? (
-                      <div className="flex flex-col space-y-4">
-                          <Link to={currentUser.role === 'admin' ? '/admin' : '/profile'}  className="flex items-center gap-3 py-4 border-b border-slate-50 transition-all active:scale-95 active:bg-slate-50 group">
-                              <FiUser className="text-primary-red" size={20}/>
-                              <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{currentUser.name}</span>
-                          </Link>
-                          {currentUser.role === 'admin' && (
-                              <Link to="/admin" className="text-emerald-500 font-black text-sm uppercase tracking-widest p-2">Admin Panel</Link>
-                          )}
-                          <button onClick={() => setIsLogoutModalOpen(true)} className="text-primary-red font-black text-sm uppercase tracking-widest text-left p-4 hover:bg-red-50 transition-all active:scale-95 rounded-[4px]">Logout</button>
-                      </div>
-                    ) : (
-                      <Link to="/auth" className="w-full py-5 bg-slate-900 text-white font-black text-sm uppercase tracking-[0.3em] text-center shadow-lg active:scale-95 transition-all block rounded-[4px]">
-                        Login / Signup
-                      </Link>
-                    )}
-                 </div>
+               )}
             </div>
           </div>
         </div>

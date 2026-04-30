@@ -126,16 +126,27 @@ const articleSchema = new mongoose.Schema({
   slug: { type: String, unique: true },
   subheadline: String,
   category: String,
+  subcategory: String,
+  country: { type: String, default: 'India' },
+  state: String,
+  city: String,
   image: String,
   imageCaption: String,
+  imageAlt: String,
   multipleImages: [String],
   date: String,
+  publishDate: Date,
   author: String,
-  status: { type: String, enum: ['Draft', 'Published'], default: 'Draft' },
+  authorImage: String,
+  status: { type: String, enum: ['Draft', 'Published', 'Scheduled'], default: 'Draft' },
   placement: { type: String, enum: ['Standard', 'Featured', 'Breaking'], default: 'Standard' },
+  isFeatured: { type: Boolean, default: false },
+  isTrending: { type: Boolean, default: false },
   views: { type: Number, default: 0 },
   excerpt: String,
   content: [mongoose.Schema.Types.Mixed], // Array for structured sections
+  fullContent: String,
+  highlights: [String],
   tags: [String],
   readingTime: String,
   metaTitle: String,
@@ -526,6 +537,69 @@ app.patch('/api/subscribers/:id/block', async (req, res) => {
     res.json(sub);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// CMS AI Generation Hub
+app.post('/api/ai/generate', async (req, res) => {
+  const { title, category, type } = req.body;
+  
+  if (!title) return res.status(400).json({ error: 'Article title required for AI generation.' });
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const fullResponse = {
+      description: `In-depth reporting on ${title}. Our analysis covers the latest developments in ${category} specifically focusing on regional and global impacts.`,
+      content: [
+        { id: Date.now() + 1, type: 'subheading', text: 'Executive Overview' },
+        { id: Date.now() + 2, type: 'paragraph', text: `Latest reports indicate a significant shift regarding ${title}. Analysts suggest that the current trajectory in ${category} will lead to profound changes.` },
+        { id: Date.now() + 3, type: 'subheading', text: 'Strategic Context' },
+        { id: Date.now() + 4, type: 'paragraph', text: `Historical data confirms that these trends are part of a broader evolution. Stakeholders are monitoring these developments closely.` }
+      ],
+      highlights: [
+        `Major development in ${category} regarding ${title}.`,
+        "Regional stakeholders express optimism about the current trajectory.",
+        "Significant impact expected within the next few months."
+      ],
+      metaTitle: `${title} | Nation Trends India`,
+      metaDescription: `Read the full article on ${title}. Stay updated with latest ${category} news from Nation Trends India.`
+    };
+
+    if (type === 'highlights') {
+      return res.json({ highlights: fullResponse.highlights });
+    }
+    if (type === 'seo') {
+      return res.json({ 
+        metaTitle: fullResponse.metaTitle, 
+        metaDescription: fullResponse.metaDescription,
+        highlights: fullResponse.highlights // Used for tags
+      });
+    }
+    if (type === 'faq') {
+      return res.json({ 
+        faqItems: [
+          { q: `What is the significance of ${title}?`, a: `This development marks a major milestone in the ${category} sector with long-term implications.` },
+          { q: `Who is most affected by these changes?`, a: `Primary stakeholders and regional observers are closely monitoring the shift.` },
+          { q: `What happens next?`, a: `Further analysis and implementation phases are expected in the coming weeks.` }
+        ]
+      });
+    }
+    if (type === 'quote') {
+      return res.json({ 
+        quoteText: `The transformation of ${title} represents a fundamental shift in how we approach ${category} today.`,
+        quoteAuthor: "Editorial Desk, Nation Trends"
+      });
+    }
+    if (type === 'subheading') {
+      return res.json({ 
+        subheadingText: `Analytical Deep-Dive into ${title}`
+      });
+    }
+
+    res.json(fullResponse);
+  } catch (err) {
+    res.status(500).json({ error: 'AI generation failed.' });
   }
 });
 

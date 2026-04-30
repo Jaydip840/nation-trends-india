@@ -15,14 +15,14 @@ import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import ScrollToTop from './components/ScrollToTop';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNews } from './context/NewsContext';
 import Loader from './components/Loader';
 import { Toaster } from 'react-hot-toast';
 
 const SiteVisitTracker = ({ children }) => {
   const { incrementSiteVisit } = useNews();
-  
+
   useEffect(() => {
     if (!sessionStorage.getItem('nti_visited')) {
       incrementSiteVisit();
@@ -35,11 +35,24 @@ const SiteVisitTracker = ({ children }) => {
 
 function App() {
   const { initialLoading } = useNews();
+  const [isExiting, setIsExiting] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
+
+  useEffect(() => {
+    if (!initialLoading) {
+      setIsExiting(true);
+      window.scrollTo(0, 0);
+      const timer = setTimeout(() => {
+        setShowLoader(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [initialLoading]);
 
   return (
     <SiteVisitTracker>
-      <Toaster 
-        position="top-right" 
+      <Toaster
+        position="top-right"
         reverseOrder={false}
         toastOptions={{
           duration: 4000,
@@ -76,9 +89,9 @@ function App() {
           },
         }}
       />
-      
-      {initialLoading && <Loader />}
-      
+
+      {showLoader && <Loader isExiting={isExiting} />}
+
       <Router>
         <ScrollToTop />
         <Routes>

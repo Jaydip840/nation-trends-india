@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { FiPlus, FiEdit2, FiTrash2, FiLogOut, FiCheck, FiX, FiLayout, FiFileText, FiSettings, FiImage, FiActivity, FiUsers, FiEye, FiSearch, FiSave, FiArrowLeft, FiCpu, FiCopy, FiZap, FiClock, FiShield, FiMenu, FiMessageSquare, FiMail, FiSmartphone, FiSend } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiLogOut, FiCheck, FiX, FiLayout, FiFileText, FiSettings, FiImage, FiActivity, FiUsers, FiEye, FiSearch, FiSave, FiArrowLeft, FiCpu, FiCopy, FiZap, FiClock, FiShield, FiMenu, FiMessageSquare, FiMail, FiSmartphone, FiSend, FiChevronDown } from 'react-icons/fi';
 import { useNews } from '../context/NewsContext';
 import ConfirmModal from '../components/ConfirmModal';
 import toast from 'react-hot-toast';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Admin = () => {
   const {
@@ -24,26 +26,18 @@ const Admin = () => {
     navigate('/');
   };
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [discoveredNews, setDiscoveredNews] = useState([]);
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [discoverCategory, setDiscoverCategory] = useState('ALL');
 
   useEffect(() => {
     setTempSettings({ ...siteSettings });
     setTempBreakingNews(breakingNews);
   }, [siteSettings, breakingNews]);
 
-  useEffect(() => {
-    if (activeTab === 'discover' && discoveredNews.length === 0) {
-      discoverIntelligence('ALL');
-    }
-  }, [activeTab]);
+
 
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
   const [activeEditorTab, setActiveEditorTab] = useState('content');
   const [messageTypeTab, setMessageTypeTab] = useState('Normal');
-  const [showPreview, setShowPreview] = useState(true);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [replyModalOpen, setReplyModalOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
@@ -52,27 +46,33 @@ const Admin = () => {
 
   const [formData, setFormData] = useState({
     title: '',
+    slug: '',
     subheadline: '',
     category: 'India',
+    subcategory: '',
+    country: 'India',
+    state: '',
+    city: '',
     image: '',
     imageCaption: '',
+    imageAlt: '',
     multipleImages: [],
     excerpt: '',
-    author: siteSettings?.defaultAuthor || 'JC',
+    author: 'JC',
+    authorImage: '',
     status: 'Published',
     placement: 'Standard',
+    isFeatured: false,
+    isTrending: false,
+    publishDate: new Date().toISOString().split('T')[0],
+    highlights: ['', '', ''],
     tags: '',
     metaTitle: '',
     metaDescription: '',
+    fullContent: '', // Single input for the entire article
     sourceUrl: '',
-    location: 'NEW DELHI',
-    priority: 5,
-    isPremium: false,
-    showComments: true,
     videoUrl: '',
-    socialLink: '',
-    relatedLinks: '',
-    fastFacts: ''
+    socialLink: ''
   });
 
   const [sections, setSections] = useState([
@@ -103,6 +103,15 @@ const Admin = () => {
     setSections(sections.filter(s => s.id !== id));
   };
 
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData(prev => ({
+        ...prev,
+        slug: prev.title.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
+      }));
+    }
+  }, [formData.title, isEditing]);
+
   const moveSection = (index, direction) => {
     const newSections = [...sections];
     const target = index + direction;
@@ -120,7 +129,12 @@ const Admin = () => {
     toast.success('Block duplicated');
   };
 
-  const handleImageUpload = (e, field = 'image') => {
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [isCountryOpen, setIsCountryOpen] = useState(false);
+  const categories = ['India', 'World', 'Politics', 'Technology', 'Business', 'Climate', 'Sports', 'Entertainment', 'Culture', 'Investigation', 'Exclusive'];
+
+  const handleImageUpload = (e, target = 'image', sectionId = null) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 8000000) {
@@ -129,82 +143,123 @@ const Admin = () => {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (field === 'image') setFormData({ ...formData, image: reader.result });
-        else if (field === 'multiple') setFormData({ ...formData, multipleImages: [...formData.multipleImages, reader.result] });
+        if (target === 'image') setFormData({ ...formData, image: reader.result });
+        else if (target === 'multiple') setFormData({ ...formData, multipleImages: [...formData.multipleImages, reader.result] });
+        else if (target === 'section' && sectionId) {
+          updateSection(sectionId, { url: reader.result });
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.title) {
-      toast.error('The Story needs a Headline to broadcast.');
-      return;
+
+    if (!formData.title) return toast.error('Article title is required.');
+    if (!formData.category) return toast.error('Please select a category.');
+    if (!formData.image && formData.status === 'Published') return toast.error('An image is required for published articles.');
+    if (formData.highlights.filter(h => h.trim() !== '').length < 3) return toast.error('Please add at least 3 highlights.');
+    if (!formData.fullContent && sections.length === 0) return toast.error('Article content is required.');
+
+    // Convert fullContent into paragraphs and merge with modular sections
+    let finalSections = [];
+    if (formData.fullContent) {
+      const paragraphs = formData.fullContent.split('\n\n').filter(p => p.trim() !== '').map((text, i) => ({
+        id: Date.now() + i,
+        type: 'paragraph',
+        text: text.trim()
+      }));
+      finalSections = [...paragraphs];
     }
-    const slug = formData.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
-    const allText = sections.map(s => s.text || (s.items ? s.items.join(' ') : '')).join(' ');
+
+    // Add any modular blocks (Headings, Images, FAQ) that were added manually
+    if (sections.length > 0) {
+      finalSections = [...finalSections, ...sections];
+    }
+
+    const allText = formData.fullContent || finalSections.map(s => s.text || (s.items ? s.items.map(i => i.q + ' ' + i.a).join(' ') : '')).join(' ');
 
     const articleData = {
       ...formData,
-      slug,
-      content: sections,
+      content: finalSections,
       readingTime: calculateReadingTime(allText),
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      date: formData.publishDate ? new Date(formData.publishDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     };
 
-    if (isEditing) {
-      updateArticle(editId, articleData);
-      toast.success('Story updated.');
-      setIsEditing(false);
-      setEditId(null);
-    } else {
-      addArticle(articleData);
-      toast.success('Story published.');
-    }
+    try {
+      if (isEditing) {
+        await updateArticle(editId, articleData);
+        toast.success('Article updated successfully');
+        setIsEditing(false);
+        setEditId(null);
+      } else {
+        await addArticle(articleData);
+        toast.success('Article published successfully');
+      }
 
-    if (articleData.placement === 'Breaking') {
-      const tickerText = `${articleData.title.toUpperCase()} /// ${breakingNews}`;
-      updateBreakingNews(tickerText);
-    }
+      if (articleData.placement === 'Breaking') {
+        const tickerText = `${articleData.title.toUpperCase()} /// ${breakingNews}`;
+        updateBreakingNews(tickerText);
+      }
 
-    resetForm();
-    setActiveTab('articles');
+      resetForm();
+      setActiveTab('articles');
+    } catch (err) {
+      toast.error('Failed to save article. Please try again.');
+    }
   };
-
   const resetForm = () => {
-    setFormData({ title: '', subheadline: '', category: 'India', image: '', imageCaption: '', multipleImages: [], excerpt: '', author: siteSettings?.defaultAuthor || 'JC', status: 'Published', placement: 'Standard', tags: '', metaTitle: '', metaDescription: '', sourceUrl: '', location: 'NEW DELHI', priority: 5, isPremium: false, showComments: true });
-    setSections([{ id: Date.now(), type: 'paragraph', text: '' }]);
+    setFormData({
+      title: '', slug: '', subheadline: '', category: 'India', subcategory: '',
+      country: 'India', state: '', city: '', image: '', imageCaption: '', imageAlt: '',
+      multipleImages: [], excerpt: '', author: 'JC', authorImage: '',
+      status: 'Published', placement: 'Standard', isFeatured: false, isTrending: false,
+      publishDate: new Date().toISOString().split('T')[0], highlights: ['', '', ''],
+      tags: '', metaTitle: '', metaDescription: '', fullContent: '',
+      sourceUrl: '', videoUrl: '', socialLink: ''
+    });
+    setSections([]);
   };
 
   const editArticle = (article) => {
     setFormData({
       title: article.title,
+      slug: article.slug,
       subheadline: article.subheadline || '',
       category: article.category,
+      subcategory: article.subcategory || '',
+      country: article.country || 'India',
+      state: article.state || '',
+      city: article.city || '',
       image: article.image,
       imageCaption: article.imageCaption || '',
+      imageAlt: article.imageAlt || '',
       multipleImages: article.multipleImages || [],
-      excerpt: article.excerpt,
-      author: article.author || 'Admin',
+      excerpt: article.excerpt || '',
+      author: article.author || 'JC',
+      authorImage: article.authorImage || '',
       status: article.status || 'Published',
       placement: article.placement || 'Standard',
+      isFeatured: article.isFeatured || false,
+      isTrending: article.isTrending || false,
+      publishDate: article.publishDate ? new Date(article.publishDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      highlights: article.highlights && article.highlights.length > 0 ? article.highlights : ['', '', ''],
       tags: Array.isArray(article.tags) ? article.tags.join(', ') : article.tags || '',
       metaTitle: article.metaTitle || '',
       metaDescription: article.metaDescription || '',
+      fullContent: article.fullContent || (article.content ? article.content.filter(s => s.type === 'paragraph').map(s => s.text).join('\n\n') : ''),
       sourceUrl: article.sourceUrl || '',
-      location: article.location || 'NEW DELHI',
-      priority: article.priority || 5,
-      isPremium: article.isPremium || false,
-      showComments: article.showComments !== undefined ? article.showComments : true,
       videoUrl: article.videoUrl || '',
-      socialLink: article.socialLink || '',
-      relatedLinks: article.relatedLinks || '',
-      fastFacts: article.fastFacts || ''
+      socialLink: article.socialLink || ''
     });
-    setSections(article.content || [{ id: Date.now(), type: 'paragraph', text: '' }]);
-    setEditId(article._id);
+
+    // Only keep non-paragraph sections in the modular blocks state to avoid duplication
+    const modularSections = article.content ? article.content.filter(s => s.type !== 'paragraph') : [];
+    setSections(modularSections);
+
     setIsEditing(true);
+    setEditId(article._id);
     setActiveTab('editor');
   };
 
@@ -222,47 +277,7 @@ const Admin = () => {
     }
   }, [currentUser, navigate]);
 
-  const discoverIntelligence = async (cat = 'ALL') => {
-    setIsDiscovering(true);
-    setDiscoverCategory(cat);
-    const id = toast.loading('Connecting to Global News Bureau...');
 
-    // Logic: In a production environment, this would call NewsAPI or similar.
-    // For this professional CMS, we provide a high-fidelity intelligence feed.
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const mockData = [
-      { id: 1, title: "Beijing-Delhi flights resume as China, India expand air links", excerpt: "Direct air connectivity between India and China improves as Air China restores service amid warming diplomatic ties.", image: "https://images.unsplash.com/photo-1544016768-982d1554f0b9?q=80&w=800", source: "TIMES OF INDIA", category: "India" },
-      { id: 2, title: "Political Storm: Kharge's 'Terrorist' Remark sparks major row", excerpt: "Congress chief clarifies statement after BJP calls for action; political atmosphere intensifies ahead of key elections.", image: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?q=80&w=800", source: "TOI BUREAU", category: "Politics" },
-      { id: 3, title: "Kerala Fireworks Blast: 8 killed, several critically injured", excerpt: "Tragedy strikes fireworks unit in Kerala; emergency protocols activated as surveillance teams monitor the rescue ops.", image: "https://images.unsplash.com/photo-1580230239031-404db3585098?q=80&w=800", source: "TIMES OF INDIA", category: "India" },
-      { id: 4, title: "Tamil Nadu Polls: High-stakes campaign concludes with final outreach", excerpt: "Political parties make the last surge in Tamil Nadu as single-phase polling begins Thursday; delimitation storm adds edge.", image: "https://images.unsplash.com/photo-1593113630400-ea4288922497?q=80&w=800", source: "TIMES OF INDIA", category: "Politics" },
-      { id: 5, title: "Global Market Vector: Sensex holds near record highs", excerpt: "Investor caution remains as Iran war risks and oil surge keep markets in a delicate balance following latest global shifts.", image: "https://images.unsplash.com/photo-1611974714400-8e100f9a8f27?q=80&w=800", source: "BLOOMBERG", category: "Business" },
-      { id: 6, title: "Apple WWDC 2026: Siri & AI updates planned for iOS 27", excerpt: "Reports suggest massive AI reconfiguration for Apple ecosystem as tech bureaus anticipate major software evolution.", image: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800", source: "TECHCRUNCH", category: "Technology" }
-    ];
-
-    const filtered = cat === 'ALL' ? mockData : mockData.filter(m => m.category === cat);
-    setDiscoveredNews(filtered);
-    setIsDiscovering(false);
-    toast.success('Intelligence Feed Synchronized', { id });
-  };
-
-  const importToEditor = (news) => {
-    setIsEditing(false);
-    setFormData({
-      ...formData,
-      title: news.title.toUpperCase(),
-      excerpt: news.excerpt,
-      image: news.image,
-      category: news.category,
-      author: siteSettings?.defaultAuthor ? `${siteSettings.defaultAuthor} (Bureau News)` : 'JC (Bureau News)',
-      tags: `${news.category}, ${news.source}, TRENDING`.toUpperCase()
-    });
-    setSections([
-      { id: Date.now(), type: 'paragraph', text: `[INTEL SOURCE: ${news.source}] ${news.excerpt}` }
-    ]);
-    setActiveTab('editor');
-    toast.success('Intel Imported to News Console');
-  };
 
   if (!currentUser || currentUser.role !== 'admin') {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -270,96 +285,66 @@ const Admin = () => {
     </div>;
   }
 
-  const handleAISynthesis = async (type) => {
-    if (!formData.title && type !== 'media' && type !== 'tags') {
-      toast.error('Primary Headline required for AI data extraction.');
+  const handleAISynthesis = async (type, sectionId = null) => {
+    if (!formData.title) {
+      toast.error('Article title is required to generate content.');
       return;
     }
 
     setIsSynthesizing(true);
-    const id = toast.loading(`Bureau AI: Processing ${type} request...`);
-
-    // Simulate Deep Intelligence Processing
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const id = toast.loading(`AI is generating ${type}...`);
 
     try {
-      const title = formData.title || "Elite Narrative Report";
-      const words = title.toLowerCase().split(' ');
+      const response = await fetch(`${API_URL}/api/ai/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          category: formData.category,
+          type,
+          context: formData.fullContent // Pass existing content for better targeted AI
+        })
+      });
 
-      const categoryMap = {
-        'tech': 'Technology', 'apple': 'Technology', 'ai': 'Technology', 'isro': 'Technology',
-        'market': 'Business', 'sensex': 'Business', 'economy': 'Business',
-        'cricket': 'Sports', 'ipl': 'Sports', 'game': 'Sports',
-        'movie': 'Entertainment', 'actor': 'Entertainment',
-        'pm': 'Politics', 'modi': 'Politics', 'election': 'Politics',
-        'global': 'World', 'us': 'World', 'war': 'World'
-      };
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
 
-      let detectedCategory = formData.category || 'India';
-      for (const [kw, cat] of Object.entries(categoryMap)) {
-        if (words.includes(kw)) { detectedCategory = cat; break; }
-      }
-
-      const cities = ['NEW DELHI', 'MUMBAI', 'BENGALURU', 'HYDERABAD', 'CHENNAI', 'KOLKATA'];
-      let detectedLocation = formData.location || cities[Math.floor(Math.random() * cities.length)];
-
-      if (type === 'grammar') {
-        const newSections = sections.map(s => s.type === 'paragraph' ? { ...s, text: s.text.trim() + " [AI Refined: Narrative expanded for professional broadcast flow.]" } : s);
-        setSections(newSections);
-        toast.success('Grammar & Flow Polished', { id });
-      } else if (type === 'expand') {
-        const newSections = sections.map(s => {
-          if (s.type === 'paragraph' && s.text.length < 300) {
-            return { ...s, text: s.text + " Furthermore, latest intelligence reports suggest that these developments are part of a broader systemic shift, with significant implications for both regional policy and international strategic frameworks in the coming quarters." };
-          }
-          return s;
-        });
-        setSections(newSections);
-        toast.success('Narrative Depth Expanded', { id });
-      } else if (type === 'summary') {
-        setFormData({ ...formData, subheadline: `Strategic analysis regarding ${title} confirms a pivotal shift in ${detectedCategory} dynamics, as bureaus monitor immediate impact across the region.` });
-        toast.success('Summary Generated', { id });
-      } else if (type === 'tags') {
-        setFormData({ ...formData, tags: `${detectedCategory}, ${detectedLocation}, STRATEGIC, ANALYSIS`.toUpperCase() });
-        toast.success('Tags Suggested', { id });
-      } else if (type === 'seo' || type === 'MASTER_FULL') {
-        const isBreaking = title.toLowerCase().includes('breaking') || title.toLowerCase().includes('urgent');
-        const smartImage = `https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&q=80&w=1200&q=news,${detectedCategory.toLowerCase()}`;
-        const gallery = [
-          `https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200&sig=1`,
-          `https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?auto=format&fit=crop&q=80&w=1200&sig=2`
-        ];
-
+      if (type === 'full') {
         setFormData(prev => ({
           ...prev,
-          subheadline: `Summary: ${title} news reported from ${detectedLocation}. Analysis ongoing.`,
-          category: detectedCategory,
-          location: detectedLocation,
-          priority: isBreaking ? 10 : 7,
-          placement: isBreaking ? 'Breaking' : 'Standard',
-          videoUrl: `https://www.youtube.com/embed/dQw4w9WgXcQ`,
-          fastFacts: `Impact: High; Bureau: ${detectedLocation}; Focus: ${detectedCategory}`,
-          image: smartImage,
-          multipleImages: gallery,
-          tags: `${detectedCategory}, NEWS, ${detectedLocation}`.toUpperCase(),
-          metaTitle: `${title} | Nation Trends India`,
-          metaDescription: `Read about ${title} and the latest ${detectedCategory} news from ${detectedLocation}.`,
-          excerpt: `A summary of ${title}, covering the latest ${detectedCategory} news and updates.`
+          subheadline: data.description,
+          excerpt: data.description,
+          highlights: data.highlights,
+          metaTitle: data.metaTitle,
+          metaDescription: data.metaDescription,
+          tags: data.highlights.join(', '),
+          fullContent: data.content.filter(s => s.type === 'paragraph').map(s => s.text).join('\n\n')
         }));
-
-        if (type === 'MASTER_FULL') {
-          setSections([
-            { id: Date.now() + 1, type: 'paragraph', text: `[NTI EXCLUSIVE - ${detectedLocation}] In a transformative development within the ${detectedCategory} sector, ${title} has emerged as a focal point of global interest. On-ground intelligence suggests a complex convergence of factors.` },
-            { id: Date.now() + 2, type: 'heading', text: "Strategic Overview" },
-            { id: Date.now() + 3, type: 'paragraph', text: `Preliminary data confirms that the implementation of response measures is already yielding results. Stakeholders have authorized immediate monitoring protocols.` },
-            { id: Date.now() + 4, type: 'quote', text: `This is a fundamental reconfiguration of the ${detectedCategory} landscape in Bharat.`, author: "Bureau Analyst" },
-            { id: Date.now() + 5, type: 'image', url: gallery[0], caption: "Surveillance documentation of the primary impact zone.", credit: "NTI Visuals" }
-          ]);
-        }
-        toast.success('AI SEO data filled', { id });
+        setSections(data.content.filter(s => s.type !== 'paragraph'));
+        toast.success('Complete article generated', { id });
+      } else if (type === 'highlights') {
+        setFormData(prev => ({ ...prev, highlights: data.highlights }));
+        toast.success('Highlights generated', { id });
+      } else if (type === 'seo') {
+        setFormData(prev => ({
+          ...prev,
+          metaTitle: data.metaTitle,
+          metaDescription: data.metaDescription,
+          tags: data.highlights.join(', ')
+        }));
+        toast.success('SEO metadata generated', { id });
+      } else if (type === 'faq' && sectionId) {
+        updateSection(sectionId, { items: data.faqItems || [{ q: 'Example Q?', a: 'Example A.' }] });
+        toast.success('FAQ generated', { id });
+      } else if (type === 'quote' && sectionId) {
+        updateSection(sectionId, { text: data.quoteText, author: data.quoteAuthor || 'Nation Trends Insight' });
+        toast.success('Quote generated', { id });
+      } else if (type === 'subheading' && sectionId) {
+        updateSection(sectionId, { text: data.subheadingText });
+        toast.success('Sub-heading generated', { id });
       }
-    } catch (error) {
-      toast.error('AI Link Interference detected.', { id });
+    } catch (err) {
+      toast.error('AI generation failed. Please check your connection.', { id });
     } finally {
       setIsSynthesizing(false);
     }
@@ -412,7 +397,7 @@ const Admin = () => {
             { id: 'articles', label: 'Stories', icon: FiFileText },
             { id: 'users', label: 'Users', icon: FiUsers },
             { id: 'newsletter', label: 'Subscribers', icon: FiMail },
-            { id: 'discover', label: 'Latest news', icon: FiCpu },
+
             { id: 'messages', label: 'Messages', icon: FiMessageSquare },
             { id: 'settings', label: 'Settings', icon: FiSettings },
           ].map((item) => (
@@ -660,604 +645,512 @@ const Admin = () => {
             </div>
           )}
 
-          {/* VIEW: ELITE EDITOR */}
+          {/* VIEW: ELITE EDITOR (MODERN CMS) */}
           {activeTab === 'editor' && (
-            <div className="animate-fade-in max-w-7xl mx-auto space-y-10 pb-40">
+            <div className="animate-fade-in max-w-7xl mx-auto space-y-8 pb-40">
 
-              {/* Editor Secondary Header */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-6 w-full lg:w-auto">
-                  <button onClick={() => setActiveTab('articles')} className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-white border border-slate-100 rounded-full text-slate-400 hover:text-primary-red hover:border-primary-red transition shadow-sm">
+              {/* Editor Strategic Header */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 border border-slate-100 rounded-sm shadow-sm sticky top-24 z-30">
+                <div className="flex items-center gap-6">
+                  <button onClick={() => setActiveTab('articles')} className="w-10 h-10 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full text-slate-400 hover:text-primary-red transition">
                     <FiArrowLeft size={18} />
                   </button>
-                  <div className="space-y-1 text-left flex-grow">
-                    <h3 className="text-xl lg:text-2xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">News Console</h3>
+                  <button
+                    onClick={() => setMobileMenuOpen(true)}
+                    className="xl:hidden p-2 bg-slate-50 border border-slate-100 rounded-sm text-slate-600"
+                  >
+                    <FiMenu size={20} />
+                  </button>
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">{isEditing ? 'Edit Article' : 'New Article'}</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">{isEditing ? 'Updating News' : 'Drafting Narrative'}</span>
-                      <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                      <span className="text-[9px] lg:text-[10px] font-black text-primary-red uppercase tracking-widest">{formData.category}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{formData.category} / {formData.status}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 w-full lg:w-auto">
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setShowPreview(!showPreview)}
-                    className={`flex-grow lg:flex-grow-0 px-6 py-3 border font-black text-[9px] uppercase tracking-widest rounded-sm transition-all duration-500 flex items-center justify-center gap-2 ${showPreview ? 'bg-slate-950 border-slate-950 text-white' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-950 hover:text-slate-950'}`}
+                    onClick={() => handleAISynthesis('full')}
+                    disabled={isSynthesizing}
+                    className="px-6 py-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-sm font-black text-[9px] uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all flex items-center gap-2"
                   >
-                    <FiEye />
-                    <span>{showPreview ? 'Hide Preview' : 'Live Preview'}</span>
+                    <FiCpu className={isSynthesizing ? 'animate-spin' : ''} />
+                    <span>{isSynthesizing ? 'Generating...' : 'Full AI Generate'}</span>
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                {/* News Feed: Main Content Area */}
-                <div className="lg:col-span-8 space-y-12 order-2 lg:order-1">
-                  {/* CORE INTEL PANEL */}
-                  <div className="bg-white p-6 lg:p-12 rounded-sm border border-slate-100 shadow-sm space-y-10 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-primary-red"></div>
-                    <div className="space-y-10 text-left">
+
+                {/* Main Content Column */}
+                <div className="lg:col-span-8 space-y-10">
+
+                  {/* SECTION 1: BASIC INFORMATION */}
+                  <section className="bg-white p-8 lg:p-12 rounded-sm border border-slate-100 shadow-sm space-y-10">
+                    <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+                      <div className="w-1.5 h-6 bg-primary-red"></div>
+                      <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-widest italic">Basic Information</h4>
+                    </div>
+
+                    <div className="space-y-8">
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] ml-1">Headline</label>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Article Title</label>
                         <input
                           value={formData.title}
                           onChange={e => setFormData({ ...formData, title: e.target.value })}
-                          className="w-full bg-slate-50 px-8 py-8 rounded-sm text-2xl lg:text-4xl font-black text-slate-950 border-none focus:ring-1 focus:ring-primary-red transition placeholder:text-slate-200 uppercase italic tracking-tighter"
-                          placeholder="ARTICLE HEADLINE..."
+                          className="w-full bg-slate-50 px-8 py-6 rounded-sm text-2xl font-black text-slate-950 border-none focus:ring-1 focus:ring-primary-red transition placeholder:text-slate-200 uppercase italic"
+                          placeholder="ENTER ARTICLE TITLE..."
                         />
                       </div>
 
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between ml-1">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">Executive Summary</label>
-                          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{formData.subheadline?.length}/160</span>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                            className="w-full bg-slate-50 px-8 py-5 rounded-sm flex items-center justify-between border border-slate-100 hover:border-slate-200 transition-all"
+                          >
+                            <span className="text-[10px] font-black text-slate-950 uppercase tracking-widest italic">{formData.category}</span>
+                            <div className={`transition-transform duration-300 ${isCategoryOpen ? 'rotate-180' : ''}`}>
+                              <FiChevronDown size={14} className="text-slate-400" />
+                            </div>
+                          </button>
+
+                          {isCategoryOpen && (
+                            <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-100 rounded-sm shadow-2xl z-[100] overflow-hidden animate-fade-in-up">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 p-4 gap-2">
+                                {categories.map(cat => (
+                                  <button
+                                    key={cat}
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({ ...formData, category: cat });
+                                      setIsCategoryOpen(false);
+                                    }}
+                                    className={`px-6 py-4 rounded-sm text-[9px] font-black uppercase tracking-widest text-left transition-all flex items-center justify-between ${formData.category === cat
+                                        ? 'bg-slate-950 text-white shadow-lg'
+                                        : 'hover:bg-slate-50 text-slate-500 hover:text-slate-950'
+                                      }`}
+                                  >
+                                    <span>{cat}</span>
+                                    {formData.category === cat && <div className="w-1.5 h-1.5 bg-primary-red rounded-full"></div>}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">URL Slug (Auto)</label>
+                          <input
+                            value={formData.slug}
+                            readOnly
+                            className="w-full bg-slate-100 px-6 py-4 rounded-sm text-[10px] font-bold text-slate-400 border-none cursor-not-allowed"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Subcategory (Optional)</label>
+                          <input
+                            value={formData.subcategory}
+                            onChange={e => setFormData({ ...formData, subcategory: e.target.value })}
+                            className="w-full bg-slate-50 px-6 py-4 rounded-sm text-[10px] font-bold text-slate-900 border-none focus:ring-1 focus:ring-primary-red transition"
+                            placeholder="e.g. Breaking, Analysis..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Short Description</label>
                         <textarea
                           value={formData.subheadline}
                           onChange={e => setFormData({ ...formData, subheadline: e.target.value })}
-                          className="w-full bg-slate-50 px-8 py-6 rounded-sm text-sm lg:text-lg font-bold text-slate-600 border-none focus:ring-1 focus:ring-primary-red transition placeholder:text-slate-200 h-32 resize-none"
-                          placeholder="Short summary of news..."
+                          className="w-full bg-slate-50 px-8 py-6 rounded-sm text-base font-medium text-slate-600 border-none focus:ring-1 focus:ring-primary-red transition placeholder:text-slate-200 h-32 resize-none"
+                          placeholder="Brief 2-3 line summary..."
                         />
                       </div>
+                    </div>
+                  </section>
 
-                      <div className="flex items-center gap-2 px-8 py-4 bg-slate-50 rounded-sm border border-slate-100">
-                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Story Link:</span>
-                        <span className="text-[9px] font-bold text-slate-400">NTI/D-SEC/</span>
-                        <span className="text-[9px] font-black text-primary-red">
-                          {formData.title ? formData.title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '') : 'pending-uri'}
-                        </span>
+                  {/* SECTION 2: HIGHLIGHTS */}
+                  <section className="bg-white p-8 lg:p-12 rounded-sm border border-slate-100 shadow-sm space-y-8">
+                    <div className="flex items-center justify-between border-b border-slate-50 pb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-slate-950"></div>
+                        <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-widest italic">Key Highlights</h4>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => handleAISynthesis('highlights')}
+                          className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5 hover:underline"
+                        >
+                          <FiCpu size={12} /> Generate Highlights
+                        </button>
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{formData.highlights.length} / 5 Points</span>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="sticky top-24 z-20 flex bg-white/90 backdrop-blur-md p-1.5 rounded-sm border border-slate-200 flex gap-1 shadow-md overflow-x-auto no-scrollbar">
-                    {['content', 'media', 'seo', 'advanced'].map(tab => (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setActiveEditorTab(tab)}
-                        className={`px-8 py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition duration-500 whitespace-nowrap ${activeEditorTab === tab ? 'bg-slate-950 text-white shadow-xl shadow-slate-950/20' : 'text-slate-400 hover:text-slate-950 hover:bg-slate-50'}`}
-                      >
-                        {tab.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-
-                  {activeEditorTab === 'content' && (
-                    <div className="space-y-12 animate-fade-in">
-                      <div className="space-y-8">
-                        <div className="flex items-center justify-between px-4">
-                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">Content Blocks</h4>
-                          <div className="flex items-center gap-2">
-                            {['Intro', 'Context', 'Analysis', 'Ending'].map(type => (
-                              <button
-                                key={type}
-                                onClick={() => {
-                                  const templates = {
-                                    Intro: [{ type: 'heading', text: 'Introduction' }, { type: 'paragraph', text: 'Narrative protocol initiated...' }],
-                                    Context: [{ type: 'heading', text: 'Strategic Context' }, { type: 'paragraph', text: 'Historical and regional data confirms...' }],
-                                    Analysis: [{ type: 'heading', text: 'Executive Analysis' }, { type: 'quote', text: 'Intelligence indicates a significant shift.', author: 'Bureau Analyst' }],
-                                    Ending: [{ type: 'heading', text: 'Conclusion' }, { type: 'paragraph', text: 'Final assessment pending confirmation.' }]
-                                  };
-                                  setSections([...sections, ...templates[type].map(s => ({ ...s, id: Date.now() + Math.random() }))]);
-                                }}
-                                className="text-[8px] font-black text-slate-300 hover:text-primary-red uppercase tracking-widest transition"
-                              >
-                                + {type}
-                              </button>
-                            ))}
+                    <div className="space-y-4">
+                      {formData.highlights.map((point, idx) => (
+                        <div key={idx} className="flex items-center gap-4 group">
+                          <div className="w-8 h-8 flex-shrink-0 bg-slate-950 text-white flex items-center justify-center text-[10px] font-black rounded-sm shadow-lg shadow-slate-900/10">
+                            {idx + 1}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{calculateReadingTime(sections.map(s => s.text || '').join(' '))}</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-6">
-                        {sections.map((section, index) => (
-                          <div
-                            key={section.id}
-                            draggable
-                            onDragStart={() => setDraggedIndex(index)}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              if (draggedIndex === null || draggedIndex === index) return;
-                              const newSections = [...sections];
-                              const draggedItem = newSections[draggedIndex];
-                              newSections.splice(draggedIndex, 1);
-                              newSections.splice(index, 0, draggedItem);
-                              setSections(newSections);
-                              setDraggedIndex(index);
+                          <input
+                            value={point}
+                            onChange={e => {
+                              const newHighlights = [...formData.highlights];
+                              newHighlights[idx] = e.target.value;
+                              setFormData({ ...formData, highlights: newHighlights });
                             }}
-                            onDragEnd={() => setDraggedIndex(null)}
-                            className={`group relative bg-white rounded-sm border transition-all duration-500 ${draggedIndex === index ? 'opacity-40 border-primary-red scale-[0.98]' : 'border-slate-100 hover:border-slate-300'}`}
-                          >
-                            <div className="absolute right-2 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10">
-                              <button onClick={() => moveSection(index, -1)} className="w-8 h-8 bg-white/90 backdrop-blur-sm border border-slate-100 rounded-sm flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-900 transition-all shadow-lg active:scale-95"><FiArrowLeft className="rotate-90" /></button>
-                              <button onClick={() => duplicateSection(index)} className="w-8 h-8 bg-white/90 backdrop-blur-sm border border-slate-100 rounded-sm flex items-center justify-center text-slate-400 hover:text-emerald-500 hover:border-emerald-500 transition-all shadow-lg active:scale-95"><FiCopy size={12} /></button>
-                              <button onClick={() => moveSection(index, 1)} className="w-8 h-8 bg-white/90 backdrop-blur-sm border border-slate-100 rounded-sm flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-900 transition-all shadow-lg active:scale-95"><FiArrowLeft className="-rotate-90" /></button>
-                              <button onClick={() => removeSection(section.id)} className="w-8 h-8 bg-white/90 backdrop-blur-sm border border-slate-100 rounded-sm flex items-center justify-center text-slate-400 hover:text-primary-red hover:border-primary-red transition-all shadow-lg active:scale-95"><FiTrash2 size={12} /></button>
-                            </div>
-
-                            <div className="p-8 lg:p-10 text-left">
-                              {section.type === 'heading' && (
-                                <div className="relative">
-                                  <div className="absolute -left-10 top-1.5 w-1.5 h-1.5 bg-primary-red"></div>
-                                  <input
-                                    value={section.text}
-                                    onChange={e => updateSection(section.id, { text: e.target.value })}
-                                    className="w-full text-2xl font-black text-slate-950 uppercase italic tracking-tighter bg-transparent border-none focus:ring-0 mb-4 font-sans"
-                                    placeholder="SUB-HEADING..."
-                                  />
-                                </div>
-                              )}
-
-                              {section.type === 'paragraph' && (
-                                <textarea
-                                  value={section.text}
-                                  onChange={e => updateSection(section.id, { text: e.target.value })}
-                                  className="w-full text-base lg:text-lg text-slate-600 font-medium leading-relaxed bg-transparent border-none focus:ring-0 resize-none min-h-[80px]"
-                                  placeholder="Detailed report text here..."
-                                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                />
-                              )}
-
-                              {section.type === 'quote' && (
-                                <div className="space-y-4 border-l-8 border-primary-red pl-10 py-2">
-                                  <textarea
-                                    value={section.text}
-                                    onChange={e => updateSection(section.id, { text: e.target.value })}
-                                    className="w-full text-2xl md:text-3xl font-black text-slate-900 italic tracking-tighter bg-transparent border-none focus:ring-0 leading-[1.1] resize-none overflow-hidden"
-                                    placeholder="PULL QUOTE..."
-                                    onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                  />
-                                  <div className="flex items-center gap-3 opacity-60">
-                                    <div className="h-px w-6 bg-slate-900"></div>
-                                    <input
-                                      value={section.author}
-                                      onChange={e => updateSection(section.id, { author: e.target.value })}
-                                      className="flex-grow text-[9px] font-black text-slate-900 uppercase tracking-widest bg-transparent border-none focus:ring-0"
-                                      placeholder="PERSON NAME"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {section.type === 'image' && (
-                                <div className="space-y-6">
-                                  <div className="relative aspect-video bg-slate-50 rounded-sm overflow-hidden border border-slate-100 group">
-                                    {section.url ? (
-                                      <img src={section.url} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" alt="Block" />
-                                    ) : (
-                                      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-300">
-                                        <FiImage size={32} />
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Asset Feed</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input
-                                      value={section.url}
-                                      onChange={e => updateSection(section.id, { url: e.target.value })}
-                                      className="w-full px-5 py-3 bg-slate-50 rounded-sm text-[10px] font-bold border-none focus:ring-1 focus:ring-primary-red transition-all"
-                                      placeholder="URL..."
-                                    />
-                                    <input
-                                      value={section.caption}
-                                      onChange={e => updateSection(section.id, { caption: e.target.value })}
-                                      className="w-full px-5 py-3 bg-slate-50 rounded-sm text-[10px] font-bold border-none focus:ring-1 focus:ring-primary-red transition-all"
-                                      placeholder="CAPTION..."
-                                    />
-                                    <input
-                                      value={section.credit || ''}
-                                      onChange={e => updateSection(section.id, { credit: e.target.value })}
-                                      className="w-full px-5 py-3 bg-slate-50 rounded-sm text-[10px] font-bold border-none focus:ring-1 focus:ring-primary-red transition-all md:col-span-2"
-                                      placeholder="CREDIT SOURCE..."
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {section.type === 'list' && (
-                                <div className="space-y-4">
-                                  {section.items?.map((item, i) => (
-                                    <div key={i} className="flex items-center gap-4">
-                                      <div className="w-6 h-6 bg-slate-950 text-white flex items-center justify-center text-[9px] font-black rounded-sm">{i + 1}</div>
-                                      <input
-                                        value={item}
-                                        onChange={e => {
-                                          const newItems = [...section.items];
-                                          newItems[i] = e.target.value;
-                                          updateSection(section.id, { items: newItems });
-                                        }}
-                                        className="flex-grow text-base font-medium text-slate-700 bg-transparent border-none focus:ring-0"
-                                        placeholder="Narrative point..."
-                                      />
-                                    </div>
-                                  ))}
-                                  <button
-                                    onClick={() => updateSection(section.id, { items: [...(section.items || []), ''] })}
-                                    className="mt-4 px-5 py-2 bg-slate-950 text-white font-black text-[8px] uppercase tracking-widest rounded-sm hover:bg-primary-red transition-all"
-                                  >
-                                    + ITEM
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-
-                        <div className="flex flex-wrap items-center justify-center gap-3 py-14 bg-slate-950 rounded-sm border border-slate-800 shadow-2xl relative overflow-hidden group">
-                          <div className="absolute inset-0 bg-gradient-to-br from-primary-red/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                          {[
-                            { type: 'heading', label: 'Headline', icon: FiFileText },
-                            { type: 'paragraph', label: 'Text Block', icon: FiMenu },
-                            { type: 'image', label: 'Visual', icon: FiImage },
-                            { type: 'quote', label: 'Quote', icon: FiMessageSquare },
-                            { type: 'list', label: 'Bullet Points', icon: FiCheck }
-                          ].map(tool => (
+                            className="flex-grow bg-slate-50 px-6 py-4 rounded-sm text-[11px] font-bold text-slate-900 border-none focus:ring-1 focus:ring-primary-red transition"
+                            placeholder="Enter strategic highlight..."
+                          />
+                          {formData.highlights.length > 3 && (
                             <button
-                              key={tool.type}
-                              onClick={() => addSection(tool.type)}
-                              className="px-8 py-4 bg-white/5 border border-white/10 rounded-sm backdrop-blur-md text-[10px] font-black text-white hover:text-primary-red uppercase tracking-widest flex items-center gap-3 hover:bg-white transition-all duration-500 z-10"
+                              onClick={() => {
+                                const newHighlights = formData.highlights.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, highlights: newHighlights });
+                              }}
+                              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-sm opacity-0 group-hover:opacity-100 transition"
                             >
-                              <tool.icon size={16} /> <span>{tool.label}</span>
+                              <FiTrash2 size={14} />
                             </button>
-                          ))}
+                          )}
                         </div>
-                      </div>
+                      ))}
+                      {formData.highlights.length < 5 && (
+                        <button
+                          onClick={() => setFormData({ ...formData, highlights: [...formData.highlights, ''] })}
+                          className="mt-4 px-6 py-3 bg-slate-50 text-slate-400 hover:text-slate-950 border border-dashed border-slate-200 hover:border-slate-400 rounded-sm text-[9px] font-black uppercase tracking-widest transition-all w-full flex items-center justify-center gap-2"
+                        >
+                          <FiPlus /> Add Intelligence Point
+                        </button>
+                      )}
                     </div>
-                  )}
+                  </section>
 
-                  {activeEditorTab === 'media' && (
-                    <div className="space-y-10 animate-fade-in text-left">
-                      <div className="bg-white p-12 rounded-sm border border-slate-100 shadow-sm space-y-10">
-                        <div className="space-y-6">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] ml-1 block">Hero Asset</label>
-                          <div className="relative aspect-[21/9] bg-slate-50 rounded-sm overflow-hidden border-2 border-dashed border-slate-200 group flex items-center justify-center">
-                            {formData.image ? (
-                              <>
-                                <img src={formData.image} className="w-full h-full object-cover" />
-                                <button onClick={() => setFormData({ ...formData, image: '' })} className="absolute top-6 right-6 w-12 h-12 bg-white rounded-full flex items-center justify-center text-red-500 shadow-xl opacity-0 group-hover:opacity-100 transition"><FiTrash2 size={20} /></button>
-                              </>
-                            ) : (
-                              <div className="flex flex-col items-center gap-6">
-                                <div className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-slate-200 group-hover:text-primary-red transition duration-500">
-                                  <FiImage size={24} />
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-[9px] font-black text-slate-950 uppercase tracking-widest">DRAG ASSET HERE</p>
-                                </div>
-                                <label className="px-10 py-4 bg-slate-950 text-white font-black text-[9px] uppercase tracking-widest rounded-sm hover:bg-primary-red transition cursor-pointer">
-                                  UPLOAD
-                                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-slate-50">
-                          <div className="space-y-4">
-                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.4em] ml-1">Asset URL</label>
-                            <input
-                              value={formData.image}
-                              onChange={e => setFormData({ ...formData, image: e.target.value })}
-                              className="w-full px-8 py-6 bg-slate-50 rounded-sm text-[11px] font-bold border-none focus:ring-1 focus:ring-primary-red transition"
-                              placeholder="URL LINK..."
-                            />
-                          </div>
-                          <div className="space-y-4">
-                            <label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.4em] ml-1">Attribution Caption</label>
-                            <input
-                              value={formData.imageCaption}
-                              onChange={e => setFormData({ ...formData, imageCaption: e.target.value })}
-                              className="w-full px-8 py-6 bg-slate-50 rounded-sm text-[11px] font-bold border-none focus:ring-1 focus:ring-primary-red transition"
-                              placeholder="CAPTION..."
-                            />
-                          </div>
-                        </div>
+                  {/* SECTION 3: ARTICLE CONTENT */}
+                  <section className="bg-white p-8 lg:p-12 rounded-sm border border-slate-100 shadow-sm space-y-8">
+                    <div className="flex items-center justify-between border-b border-slate-50 pb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-primary-red"></div>
+                        <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-widest italic">Article Content</h4>
                       </div>
+                      <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{calculateReadingTime(formData.fullContent)}</span>
                     </div>
-                  )}
 
-                  {activeEditorTab === 'seo' && (
-                    <div className="space-y-10 animate-fade-in text-left">
-                      <div className="bg-white p-12 rounded-sm border border-slate-100 shadow-sm space-y-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="space-y-6">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Metadata Tags</label>
-                            <textarea
-                              value={formData.tags}
-                              onChange={e => setFormData({ ...formData, tags: e.target.value })}
-                              className="w-full p-8 bg-slate-50 rounded-sm text-[11px] font-bold border-none focus:ring-1 focus:ring-primary-red transition resize-none"
-                              rows={4}
-                              placeholder="TAGS..."
-                            />
-                          </div>
-                          <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Short Summary (Excerpt)</label>
-                              <button
-                                onClick={() => handleAISynthesis('seo')}
-                                className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-sm text-[8px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-500 hover:text-white transition"
-                              >
-                                Auto-fill with AI
-                              </button>
-                            </div>
-                            <textarea
-                              value={formData.excerpt}
-                              onChange={e => setFormData({ ...formData, excerpt: e.target.value })}
-                              className="w-full p-8 bg-slate-50 rounded-sm text-[11px] font-bold border-none focus:ring-1 focus:ring-primary-red transition resize-none"
-                              rows={4}
-                              placeholder="SEO summary..."
-                            />
-                          </div>
-                        </div>
+                    <div className="space-y-4">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Paste full article here (Double enter for new paragraph)</p>
+                      <textarea
+                        value={formData.fullContent}
+                        onChange={e => setFormData({ ...formData, fullContent: e.target.value })}
+                        className="w-full bg-slate-50 px-8 py-8 rounded-sm text-base font-medium text-slate-700 border-none focus:ring-1 focus:ring-primary-red transition placeholder:text-slate-200 min-h-[500px] resize-y leading-relaxed"
+                        placeholder="Paste your full article content here... headings and images can still be added using modular blocks if needed."
+                      />
+                    </div>
+                  </section>
+
+                  {/* OPTIONAL: MODULAR BLOCKS (FOR HEADINGS/IMAGES) */}
+                  <section className="space-y-8">
+                    <div className="flex items-center justify-between px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-6 bg-slate-950"></div>
+                        <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-widest italic">Additional Elements (Headings, Images, FAQ)</h4>
                       </div>
-                    </div>
-                  )}
-
-                  {activeEditorTab === 'advanced' && (
-                    <div className="space-y-10 animate-fade-in text-left">
-                      <div className="bg-white p-12 rounded-sm border border-slate-100 shadow-sm space-y-10">
-                        <h4 className="text-[12px] font-black text-slate-950 uppercase tracking-tight">Stream Protocols</h4>
-                        <div className="space-y-8">
-                          <div className="space-y-4">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Embed Stream URL</label>
-                            <input
-                              value={formData.videoUrl}
-                              onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
-                              className="w-full p-6 bg-slate-50 rounded-sm text-[11px] font-bold focus:ring-1 focus:ring-primary-red transition border-none"
-                              placeholder="https://..."
-                            />
-                          </div>
-                          <div className="space-y-4">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Social Integration Link</label>
-                            <input
-                              value={formData.socialLink}
-                              onChange={e => setFormData({ ...formData, socialLink: e.target.value })}
-                              className="w-full p-6 bg-slate-50 rounded-sm text-[11px] font-bold focus:ring-1 focus:ring-primary-red transition border-none"
-                              placeholder="https://..."
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Column: Settings */}
-                <div className="lg:col-span-4 space-y-8 animate-fade-in order-1 lg:order-2">
-                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-8 text-left sticky top-8">
-                    <div className="space-y-2 pb-4 border-b border-slate-50">
-                      <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.5em]">Publishing Settings</h4>
-                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Configure how news is shown</p>
                     </div>
 
                     <div className="space-y-6">
-                      <div className="space-y-3">
-                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Section Classification</label>
-                        <select
-                          value={formData.category}
-                          onChange={e => setFormData({ ...formData, category: e.target.value })}
-                          className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-black border-none focus:ring-1 focus:ring-primary-red transition"
-                        >
-                          <option>India</option>
-                          <option>World</option>
-                          <option>Investigation</option>
-                          <option>Exclusive</option>
-                          <option>Politics</option>
-                          <option>Technology</option>
-                          <option>Business</option>
-                          <option>Climate</option>
-                          <option>Culture</option>
-                        </select>
-                      </div>
+                      {sections.map((section, index) => (
+                        <div key={section.id} className="group relative bg-white rounded-sm border border-slate-100 hover:border-slate-300 transition-all duration-500 p-8 lg:p-10">
+                          <div className="absolute right-2 top-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                            <button onClick={() => removeSection(section.id)} className="w-8 h-8 bg-white border border-slate-100 rounded-sm flex items-center justify-center text-slate-400 hover:text-primary-red transition shadow-lg"><FiTrash2 size={12} /></button>
+                          </div>
 
+                          <div className="text-[8px] font-black text-primary-red uppercase tracking-widest mb-4 opacity-50">{section.type}</div>
+
+                          {section.type === 'subheading' && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sub-Heading</label>
+                                <button onClick={() => handleAISynthesis('subheading', section.id)} className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5 hover:underline"><FiCpu size={10} /> AI GENERATE</button>
+                              </div>
+                              <input
+                                value={section.text}
+                                onChange={e => updateSection(section.id, { text: e.target.value })}
+                                className="w-full text-lg font-black text-slate-950 uppercase italic bg-transparent border-none focus:ring-0 mb-2"
+                                placeholder="SUB-HEADING..."
+                              />
+                            </div>
+                          )}
+
+                          {section.type === 'paragraph' && (
+                            <textarea
+                              value={section.text}
+                              onChange={e => updateSection(section.id, { text: e.target.value })}
+                              className="w-full text-base text-slate-600 font-medium leading-relaxed bg-transparent border-none focus:ring-0 resize-none min-h-[100px]"
+                              placeholder="Paragraph text..."
+                              onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                            />
+                          )}
+
+                          {section.type === 'faq' && (
+                            <div className="space-y-6">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-[10px] font-black text-primary-red uppercase tracking-widest italic underline decoration-2">FAQ</h5>
+                                <button onClick={() => handleAISynthesis('faq', section.id)} className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5 hover:underline"><FiCpu size={10} /> AI GENERATE FAQ</button>
+                              </div>
+                              {(section.items || []).map((item, i) => (
+                                <div key={i} className="space-y-3 bg-slate-50 p-6 border-l-4 border-slate-900">
+                                  <input
+                                    value={item.q}
+                                    onChange={e => {
+                                      const newItems = [...section.items];
+                                      newItems[i].q = e.target.value;
+                                      updateSection(section.id, { items: newItems });
+                                    }}
+                                    className="w-full text-xs font-black text-slate-900 uppercase tracking-tight bg-transparent border-none focus:ring-0"
+                                    placeholder="QUESTION?"
+                                  />
+                                  <textarea
+                                    value={item.a}
+                                    onChange={e => {
+                                      const newItems = [...section.items];
+                                      newItems[i].a = e.target.value;
+                                      updateSection(section.id, { items: newItems });
+                                    }}
+                                    className="w-full text-[11px] font-medium text-slate-500 bg-transparent border-none focus:ring-0 resize-none h-16"
+                                    placeholder="ANSWER..."
+                                  />
+                                </div>
+                              ))}
+                              <button onClick={() => updateSection(section.id, { items: [...(section.items || []), { q: '', a: '' }] })} className="px-5 py-2 bg-slate-950 text-white font-black text-[8px] uppercase tracking-widest rounded-sm">+ ADD FAQ</button>
+                            </div>
+                          )}
+
+                          {section.type === 'subimage' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div className="aspect-video bg-slate-50 rounded-sm border border-slate-100 overflow-hidden relative group">
+                                {section.url ? (
+                                  <>
+                                    <img src={section.url} className="w-full h-full object-cover" />
+                                    <button onClick={() => updateSection(section.id, { url: '' })} className="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-sm text-red-500 shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><FiTrash2 size={12} /></button>
+                                  </>
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-slate-200">
+                                    <FiImage size={24} />
+                                    <label className="px-4 py-1.5 bg-slate-950 text-white text-[8px] font-black uppercase tracking-widest rounded-sm cursor-pointer hover:bg-primary-red transition">
+                                      UPLOAD <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'section', section.id)} />
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="space-y-4">
+                                <input value={section.url} onChange={e => updateSection(section.id, { url: e.target.value })} className="w-full px-5 py-3 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="OR IMAGE URL..." />
+                                <input value={section.caption} onChange={e => updateSection(section.id, { caption: e.target.value })} className="w-full px-5 py-3 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="CAPTION..." />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <div className="flex flex-wrap items-center justify-center gap-3 py-12 bg-slate-50 border border-dashed border-slate-200 rounded-sm">
+                        <span className="w-full text-center text-[8px] font-black text-slate-300 uppercase tracking-widest mb-2">Insert Additional Elements Below Main Content</span>
+                        {[
+                          { type: 'subheading', label: 'Heading', icon: FiFileText },
+                          { type: 'subimage', label: 'Image Block', icon: FiImage },
+                          { type: 'faq', label: 'FAQ Block', icon: FiCheck },
+                          { type: 'quote', label: 'Quote', icon: FiMessageSquare }
+                        ].map(tool => (
+                          <button key={tool.type} onClick={() => addSection(tool.type)} className="px-6 py-3 bg-white border border-slate-200 rounded-sm text-[9px] font-black text-slate-400 hover:text-primary-red hover:border-primary-red uppercase tracking-widest flex items-center gap-2 transition-all shadow-sm">
+                            <tool.icon size={14} /> <span>Add {tool.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Sidebar Column (Intelligence Controls) */}
+                <div className="lg:col-span-4 space-y-10">
+
+                  {/* FEATURED IMAGE */}
+                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-8 text-left">
+                    <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.4em] italic pb-4 border-b border-slate-50">Featured Image</h4>
+                    <div className="space-y-6">
+                      <div className="aspect-video bg-slate-50 rounded-sm border border-slate-200 overflow-hidden relative group">
+                        {formData.image ? (
+                          <>
+                            <img src={formData.image} className="w-full h-full object-cover" />
+                            <button onClick={() => setFormData({ ...formData, image: '' })} className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-md rounded-full text-red-500 shadow-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><FiTrash2 size={16} /></button>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-slate-200">
+                            <FiImage size={32} />
+                            <label className="px-6 py-2 bg-slate-950 text-white text-[8px] font-black uppercase tracking-widest rounded-sm cursor-pointer hover:bg-primary-red transition">UPLOAD<input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} /></label>
+                          </div>
+                        )}
+                      </div>
+                      <input value={formData.image} onChange={e => setFormData({ ...formData, image: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="MEDIA URL..." />
+                      <input value={formData.imageAlt} onChange={e => setFormData({ ...formData, imageAlt: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="SEO ALT TEXT (REQUIRED)..." />
+                    </div>
+                  </div>
+
+                  {/* LOCATION */}
+                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-8 text-left">
+                    <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.4em] italic pb-4 border-b border-slate-50">Location</h4>
+                    <div className="space-y-5">
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsCountryOpen(!isCountryOpen)}
+                          className="w-full bg-slate-50 px-5 py-4 rounded-sm flex items-center justify-between border border-slate-100 hover:border-slate-200 transition-all"
+                        >
+                          <span className="text-[10px] font-black text-slate-950 uppercase tracking-widest">{formData.country}</span>
+                          <FiChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isCountryOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isCountryOpen && (
+                          <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-100 rounded-sm shadow-xl z-[50] overflow-hidden">
+                            {['India', 'International'].map(opt => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, country: opt });
+                                  setIsCountryOpen(false);
+                                }}
+                                className={`w-full px-5 py-3 text-[9px] font-black uppercase tracking-widest text-left transition-all ${formData.country === opt
+                                    ? 'bg-slate-950 text-white'
+                                    : 'hover:bg-slate-50 text-slate-500 hover:text-slate-950'
+                                  }`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <input value={formData.state} onChange={e => setFormData({ ...formData, state: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="STATE..." />
+                      <input value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-bold border-none" placeholder="CITY..." />
+                    </div>
+                  </div>
+
+                  {/* PUBLISH STATUS */}
+                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-8 text-left">
+                    <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.4em] italic pb-4 border-b border-slate-50">Publish Status</h4>
+                    <div className="space-y-6">
                       <div className="space-y-3">
-                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Show As</label>
-                        <div className="grid grid-cols-1 gap-1">
-                          {['Standard', 'Breaking'].map(opt => (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => setFormData({ ...formData, placement: opt })}
-                              className={`py-4 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all duration-300 border ${formData.placement === opt ? 'bg-primary-red text-white border-primary-red shadow-xl shadow-red-900/20' : 'bg-slate-50 text-slate-400 border-transparent hover:border-slate-200'}`}
-                            >
-                              {opt}
-                            </button>
-                          ))}
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Protocol</label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsStatusOpen(!isStatusOpen)}
+                            className="w-full bg-slate-50 px-5 py-4 rounded-sm flex items-center justify-between border border-slate-100 hover:border-slate-200 transition-all"
+                          >
+                            <span className="text-[10px] font-black text-slate-950 uppercase tracking-widest">{formData.status}</span>
+                            <FiChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${isStatusOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          {isStatusOpen && (
+                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-100 rounded-sm shadow-xl z-[50] overflow-hidden">
+                              {['Published', 'Draft', 'Scheduled'].map(opt => (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData({ ...formData, status: opt });
+                                    setIsStatusOpen(false);
+                                  }}
+                                  className={`w-full px-5 py-3 text-[9px] font-black uppercase tracking-widest text-left transition-all ${formData.status === opt
+                                      ? 'bg-slate-950 text-white'
+                                      : 'hover:bg-slate-50 text-slate-500 hover:text-slate-950'
+                                    }`}
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
-
                       <div className="space-y-3">
-                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-1">Report Location</label>
-                        <input
-                          value={formData.location}
-                          onChange={e => setFormData({ ...formData, location: e.target.value.toUpperCase() })}
-                          className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-black border-none focus:ring-1 focus:ring-primary-red transition"
-                          placeholder="CITY NAME..."
-                        />
-                      </div>
-
-                      <div className="hidden lg:block pt-6">
-                        <button 
-                            onClick={handleSubmit} 
-                            className="w-full bg-slate-950 text-white font-black py-6 rounded-sm text-[10px] uppercase tracking-[0.3em] hover:bg-primary-red transition flex items-center justify-center gap-3 shadow-xl"
-                        >
-                            <FiZap /> <span>{isEditing ? 'Update News' : 'Publish News'}</span>
-                        </button>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Schedule Date</label>
+                        <input type="date" value={formData.publishDate} onChange={e => setFormData({ ...formData, publishDate: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[10px] font-black border-none" />
                       </div>
                     </div>
                   </div>
 
-                  {/* MOBILE STICKY ACTION BAR */}
-                  <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 p-4 z-[100] flex gap-3 shadow-2xl">
-                    <button 
+                  {/* ARTICLE OPTIONS */}
+                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-6 text-left">
+                    <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.4em] italic pb-4 border-b border-slate-50">Article Options</h4>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'breaking', label: 'Breaking News', key: 'placement', value: 'Breaking' },
+                        { id: 'featured', label: 'Featured Article', key: 'isFeatured' },
+                        { id: 'trending', label: 'Trending Story', key: 'isTrending' }
+                      ].map(flag => (
+                        <button
+                          key={flag.id}
+                          onClick={() => {
+                            if (flag.key === 'placement') setFormData({ ...formData, placement: formData.placement === 'Breaking' ? 'Standard' : 'Breaking' });
+                            else setFormData({ ...formData, [flag.key]: !formData[flag.key] });
+                          }}
+                          className={`w-full p-4 rounded-sm border text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-between ${(flag.key === 'placement' ? formData.placement === 'Breaking' : formData[flag.key])
+                              ? 'bg-slate-950 text-white border-slate-950 shadow-lg shadow-slate-900/20'
+                              : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'
+                            }`}
+                        >
+                          {flag.label}
+                          <div className={`w-2 h-2 rounded-full ${(flag.key === 'placement' ? formData.placement === 'Breaking' : formData[flag.key]) ? 'bg-primary-red animate-pulse' : 'bg-slate-200'}`}></div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SEO SETTINGS */}
+                  <div className="bg-white p-8 rounded-sm border border-slate-100 shadow-sm space-y-6 text-left">
+                    <div className="flex items-center justify-between pb-4 border-b border-slate-50">
+                      <h4 className="text-[10px] font-black text-slate-950 uppercase tracking-[0.4em] italic">SEO Settings</h4>
+                      <button
+                        onClick={() => handleAISynthesis('seo')}
+                        className="text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1.5 hover:underline"
+                      >
+                        <FiCpu size={10} /> AI SEO
+                      </button>
+                    </div>
+                    <div className="space-y-4">
+                      <input value={formData.metaTitle} onChange={e => setFormData({ ...formData, metaTitle: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[9px] font-bold border-none" placeholder="META TITLE..." />
+                      <textarea value={formData.metaDescription} onChange={e => setFormData({ ...formData, metaDescription: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[9px] font-bold border-none h-24 resize-none" placeholder="META DESCRIPTION..." />
+                      <input value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} className="w-full p-4 bg-slate-50 rounded-sm text-[9px] font-bold border-none" placeholder="TAGS (COMMA SEPARATED)..." />
+                    </div>
+                  </div>
+
+                  {/* PUBLISH BUTTON */}
+                  <div className="pt-6">
+                    <button
                       onClick={handleSubmit}
-                      className="flex-grow bg-slate-950 text-white font-black py-4 rounded-sm text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+                      className="w-full bg-slate-950 text-white font-black py-6 rounded-sm text-[10px] uppercase tracking-[0.4em] hover:bg-primary-red transition-all flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/20"
                     >
-                      <FiZap /> {isEditing ? 'UPDATE' : 'PUBLISH'}
-                    </button>
-                    <button 
-                      onClick={() => setShowPreview(!showPreview)}
-                      className={`px-6 border font-black py-4 rounded-sm text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all ${showPreview ? 'bg-slate-950 text-white border-slate-950' : 'bg-white border-slate-200 text-slate-400'}`}
-                    >
-                      <FiEye />
+                      <FiZap />
+                      <span>{isEditing ? 'Update Article' : 'Publish Article'}</span>
                     </button>
                   </div>
+
                 </div>
               </div>
-
-              {/* BOTTOM SECTION: LIVE PREVIEW */}
-              {showPreview && (
-                <div className="mt-20 pt-20 border-t border-slate-100">
-                  <div className="max-w-7xl mx-auto space-y-10">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1 text-left">
-                        <h3 className="text-xl font-black text-slate-950 uppercase italic tracking-tighter">Live Preview</h3>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Real-time mobile and desktop view</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
-                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                          <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Live</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                      {/* MOBILE VIEW (CENTERED SIMULATION) */}
-                      <div className="lg:col-span-4 flex justify-center">
-                        <div className="w-full max-w-[360px] bg-slate-950 rounded-[40px] p-4 shadow-2xl border-[8px] border-slate-900 relative">
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-20"></div>
-                          <div className="bg-white rounded-none overflow-hidden aspect-[9/19.5] preview-scroll relative">
-                            <div className="p-6 space-y-6 text-left pt-12">
-                              <div className="space-y-3">
-                                <span className="bg-primary-red text-white text-[7px] font-black px-2 py-1 uppercase tracking-widest">{formData.category}</span>
-                                <h1 className="text-2xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">{formData.title || 'Untitled Story'}</h1>
-                                <p className="text-[10px] font-bold text-slate-500 leading-relaxed">{formData.subheadline || 'Summary will appear here...'}</p>
-                              </div>
-                              {formData.image && <img src={formData.image} className="w-full h-auto grayscale rounded-sm" />}
-                              <div className="space-y-4">
-                                {sections.map((s, i) => (
-                                  <div key={i} className="preview-block">
-                                    {s.type === 'heading' && <h3 className="text-sm font-black text-slate-950 uppercase italic tracking-tighter mt-4">{s.text}</h3>}
-                                    {s.type === 'paragraph' && <p className="text-[10px] text-slate-600 leading-relaxed font-medium">{s.text}</p>}
-                                    {s.type === 'quote' && <div className="border-l-4 border-primary-red pl-4 py-2 italic font-black text-[14px] text-slate-900 leading-tight bg-slate-50">{s.text}</div>}
-                                    {s.type === 'image' && s.url && <div className="space-y-1 py-4"><img src={s.url} className="w-full h-auto rounded-sm" /><span className="text-[7px] text-slate-400 italic block mt-2">{s.caption}</span></div>}
-                                    {s.type === 'list' && <ul className="space-y-2 ml-4 list-decimal">{s.items?.map((item, idx) => <li key={idx} className="text-[10px] text-slate-600 font-medium">{item}</li>)}</ul>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* DESKTOP/WEB VIEW SIMULATION */}
-                      <div className="lg:col-span-8">
-                        <div className="bg-white rounded-none border border-slate-100 shadow-2xl overflow-hidden h-full flex flex-col">
-                          <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2">
-                            <div className="flex gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
-                              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
-                              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
-                            </div>
-                            <div className="flex-grow px-4">
-                              <div className="bg-white border border-slate-100 rounded-none py-1 px-3 text-[9px] text-slate-400 font-bold">nationtrends.com/news/{formData.title?.toLowerCase().replace(/ /g, '-')}</div>
-                            </div>
-                          </div>
-                          <div className="flex-grow overflow-y-auto preview-scroll p-12 lg:p-20 text-left bg-[#fcfcfc]">
-                            <div className="max-w-3xl mx-auto space-y-12">
-                              <div className="space-y-6">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-[10px] font-black text-primary-red uppercase tracking-widest">{formData.category}</span>
-                                  <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formData.location}</span>
-                                </div>
-                                <h1 className="text-4xl lg:text-6xl font-black text-slate-950 uppercase italic tracking-tighter leading-[0.95]">{formData.title || 'Headline Pending'}</h1>
-                                <p className="text-xl lg:text-2xl font-bold text-slate-400 leading-tight italic">"{formData.subheadline}"</p>
-                              </div>
-
-                              {formData.image && (
-                                <div className="space-y-3">
-                                  <img src={formData.image} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-1000" />
-                                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{formData.imageCaption}</p>
-                                </div>
-                              )}
-
-                              <div className="space-y-10">
-                                {sections.map((s, i) => (
-                                  <div key={i} className="prose-intel">
-                                    {s.type === 'heading' && <h2 className="text-2xl font-black text-slate-950 uppercase italic tracking-tighter border-b-2 border-slate-950 pb-2 mb-8">{s.text}</h2>}
-                                    {s.type === 'paragraph' && <p className="text-lg text-slate-700 leading-relaxed font-medium">{s.text}</p>}
-                                    {s.type === 'quote' && (
-                                      <div className="bg-slate-950 p-12 rounded-none relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-2 h-full bg-primary-red"></div>
-                                        <p className="text-3xl font-black text-white italic tracking-tighter leading-tight">"{s.text}"</p>
-                                        <p className="mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">— {s.author}</p>
-                                      </div>
-                                    )}
-                                    {s.type === 'image' && s.url && (
-                                      <figure className="space-y-4">
-                                        <img src={s.url} className="w-full h-auto grayscale" />
-                                        <figcaption className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
-                                          <span>{s.caption}</span>
-                                          <span className="text-primary-red">SOURCE: {s.credit}</span>
-                                        </figcaption>
-                                      </figure>
-                                    )}
-                                    {s.type === 'list' && (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 border border-slate-100">
-                                        {s.items?.map((item, idx) => (
-                                          <div key={idx} className="flex gap-4">
-                                            <span className="text-primary-red font-black text-xl italic">0{idx + 1}.</span>
-                                            <p className="text-sm font-bold text-slate-600 leading-snug">{item}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
+
 
           {/* VIEW: ACCOUNTS (USERS) */}
           {activeTab === 'users' && (
             <div className="animate-fade-in space-y-16 pb-40">
-              
+
               {/* SECTION 1: REGISTERED USERS (IDENTITY VAULT) */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between px-4">
@@ -1294,12 +1187,12 @@ const Admin = () => {
                               </div>
                             </td>
                             <td className="px-8 py-6">
-                                <span className="text-slate-500 font-bold text-xs">{user.email}</span>
+                              <span className="text-slate-500 font-bold text-xs">{user.email}</span>
                             </td>
                             <td className="px-8 py-6">
-                                <code className="bg-slate-100 px-2 py-1 rounded-none text-[10px] font-mono text-slate-400">
-                                  {user.password || 'Encrypted'}
-                                </code>
+                              <code className="bg-slate-100 px-2 py-1 rounded-none text-[10px] font-mono text-slate-400">
+                                {user.password || 'Encrypted'}
+                              </code>
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex flex-col gap-1">
@@ -1311,20 +1204,20 @@ const Admin = () => {
                                 )}
                               </div>
                             </td>
-                             <td className="px-8 py-6 text-right flex justify-end gap-3">
-                               <button
-                                 onClick={() => toggleBlockUser(user._id)}
-                                 className={`px-4 py-2 rounded-sm font-black text-[9px] uppercase tracking-widest transition-all ${user.isBlocked ? 'bg-emerald-500 text-white' : 'bg-slate-950 text-white'}`}
-                               >
-                                 {user.isBlocked ? 'Unblock' : 'Block'}
-                               </button>
-                               <button
-                                 onClick={() => { if(window.confirm('Delete this user?')) deleteUser(user._id); }}
-                                 className="px-4 py-2 rounded-sm bg-red-600 text-white font-black text-[9px] uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2"
-                               >
-                                 <FiTrash2 size={12} /> Delete
-                               </button>
-                             </td>
+                            <td className="px-8 py-6 text-right flex justify-end gap-3">
+                              <button
+                                onClick={() => toggleBlockUser(user._id)}
+                                className={`px-4 py-2 rounded-sm font-black text-[9px] uppercase tracking-widest transition-all ${user.isBlocked ? 'bg-emerald-500 text-white' : 'bg-slate-950 text-white'}`}
+                              >
+                                {user.isBlocked ? 'Unblock' : 'Block'}
+                              </button>
+                              <button
+                                onClick={() => { if (window.confirm('Delete this user?')) deleteUser(user._id); }}
+                                className="px-4 py-2 rounded-sm bg-red-600 text-white font-black text-[9px] uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2"
+                              >
+                                <FiTrash2 size={12} /> Delete
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1347,7 +1240,7 @@ const Admin = () => {
                 </div>
 
                 <div className="bg-white rounded-sm border border-slate-100 shadow-sm overflow-hidden">
-                   <div className="overflow-x-auto">
+                  <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead className="bg-slate-50 text-[9px] font-black uppercase tracking-[0.4em] text-slate-400">
                         <tr>
@@ -1357,7 +1250,7 @@ const Admin = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {[...users].sort((a,b) => new Date(b.lastLogin) - new Date(a.lastLogin)).slice(0, 5).map(user => (
+                        {[...users].sort((a, b) => new Date(b.lastLogin) - new Date(a.lastLogin)).slice(0, 5).map(user => (
                           <tr key={`log-${user._id}`} className="hover:bg-slate-50 transition">
                             <td className="px-8 py-6">
                               <div className="flex flex-col">
@@ -1372,7 +1265,7 @@ const Admin = () => {
                               </div>
                             </td>
                             <td className="px-8 py-6">
-                               <span className={`px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${user.isBlocked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                              <span className={`px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${user.isBlocked ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
                                 {user.isBlocked ? 'Blocked' : 'Active'}
                               </span>
                             </td>
@@ -1380,7 +1273,7 @@ const Admin = () => {
                         ))}
                       </tbody>
                     </table>
-                   </div>
+                  </div>
                 </div>
               </div>
 
@@ -1430,111 +1323,12 @@ const Admin = () => {
             </div>
           )}
 
-          {/* VIEW: INTELLIGENCE DISCOVERY (DISCOVER) */}
-          {activeTab === 'discover' && (
-            <div className="animate-fade-in space-y-10 pb-40">
-              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black text-slate-950 uppercase italic tracking-tighter">Latest News Feed</h3>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Find and import news from global sources</p>
-                </div>
-                <button
-                  onClick={() => discoverIntelligence(discoverCategory)}
-                  disabled={isDiscovering}
-                  className="flex items-center gap-2 px-6 py-3 bg-slate-950 text-white rounded-sm font-black text-[9px] uppercase tracking-widest hover:bg-primary-red transition duration-500"
-                >
-                  <FiClock className={isDiscovering ? 'animate-spin' : ''} />
-                  <span>{isDiscovering ? 'Searching...' : 'Refresh News'}</span>
-                </button>
-              </div>
 
-              {/* Source Filters */}
-              <div className="flex flex-wrap gap-2 pb-4 border-b border-slate-100">
-                {['ALL', 'India', 'Business', 'Technology', 'Politics', 'Climate', 'Culture'].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => discoverIntelligence(cat)}
-                    className={`px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${discoverCategory === cat ? 'bg-primary-red text-white shadow-lg shadow-red-500/20' : 'bg-white border border-slate-100 text-slate-400 hover:border-slate-950 hover:text-slate-950'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Discovery Grid - Category Wise */}
-              <div className="space-y-16">
-                {isDiscovering ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                    {Array(6).fill(0).map((_, i) => (
-                      <div key={i} className="bg-white border border-slate-50 rounded-sm overflow-hidden animate-pulse">
-                        <div className="h-48 bg-slate-100"></div>
-                        <div className="p-6 space-y-4">
-                          <div className="h-4 w-3/4 bg-slate-100 rounded"></div>
-                          <div className="h-10 w-full bg-slate-100 rounded"></div>
-                          <div className="h-8 w-1/2 bg-slate-100 rounded"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  ['India', 'Politics', 'Business', 'Technology', 'Climate', 'Culture', 'Exclusive'].map(cat => {
-                    const catNews = discoveredNews.filter(n => n.category === cat);
-                    if (catNews.length === 0 && discoverCategory !== 'ALL') return null;
-                    if (discoverCategory !== 'ALL' && discoverCategory !== cat) return null;
-                    if (catNews.length === 0) return null;
-
-                    return (
-                      <div key={cat} className="space-y-8 animate-fade-in">
-                        <div className="flex items-center gap-4">
-                          <div className="w-2 h-8 bg-primary-red"></div>
-                          <h4 className="text-sm font-black text-slate-950 uppercase tracking-[0.4em]">{cat} News</h4>
-                          <div className="flex-grow h-px bg-slate-100"></div>
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{catNews.length} Records</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                          {catNews.map(news => (
-                            <div key={news.id} className="group bg-white rounded-sm border border-slate-100 shadow-sm hover:border-primary-red transition-all duration-500 overflow-hidden flex flex-col">
-                              <div className="relative h-56 overflow-hidden">
-                                <img src={news.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-110" alt="" />
-                                <div className="absolute top-4 left-4">
-                                  <span className="px-3 py-1 bg-slate-950 text-white text-[7px] font-black uppercase tracking-widest rounded-sm border border-slate-800 shadow-2xl">
-                                    {news.category}
-                                  </span>
-                                </div>
-                                <div className="absolute top-4 right-4">
-                                  <span className="px-3 py-1 bg-primary-red text-white text-[7px] font-black uppercase tracking-widest rounded-sm">
-                                    {news.source}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="p-8 flex-grow space-y-4">
-                                <h4 className="text-lg font-black text-slate-950 uppercase italic tracking-tighter leading-tight group-hover:text-primary-red transition-colors line-clamp-2">{news.title}</h4>
-                                <p className="text-xs text-slate-500 font-medium leading-relaxed italic line-clamp-3">"{news.excerpt}"</p>
-                                <div className="pt-6 border-t border-slate-50">
-                                  <button
-                                    onClick={() => importToEditor(news)}
-                                    className="w-full py-4 bg-slate-950 text-white font-black text-[9px] uppercase tracking-[0.2em] rounded-none transition duration-500 group-hover:bg-primary-red flex items-center justify-center gap-2"
-                                  >
-                                    <FiEdit2 size={12} /> Import to Editor
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
 
           {/* VIEW: MESSAGES (MAIL) */}
           {activeTab === 'messages' && (
             <div className="animate-fade-in space-y-10 pb-40">
-              
+
               {/* Message Navigation */}
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 px-4">
                 <div className="space-y-1">
@@ -1542,13 +1336,13 @@ const Admin = () => {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">View and reply to user messages and support requests</p>
                 </div>
                 <div className="flex bg-slate-100 p-1 rounded-sm">
-                  <button 
+                  <button
                     onClick={() => setMessageTypeTab('Normal')}
                     className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${messageTypeTab === 'Normal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     User Messages
                   </button>
-                  <button 
+                  <button
                     onClick={() => setMessageTypeTab('Support')}
                     className={`px-6 py-2.5 text-[9px] font-black uppercase tracking-widest transition-all ${messageTypeTab === 'Support' ? 'bg-white text-primary-red shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                   >
@@ -1570,27 +1364,27 @@ const Admin = () => {
                     <div key={msg.id} className="bg-white rounded-sm border border-slate-100 shadow-sm p-8 space-y-6 hover:border-primary-red transition group">
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                              <h4 className="text-lg font-black text-slate-950 uppercase italic tracking-tighter group-hover:text-primary-red transition-colors">{msg.subject}</h4>
-                              {msg.type === 'Support' && (
-                                <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest rounded-sm shadow-lg shadow-red-500/20">High Priority</span>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <h4 className="text-lg font-black text-slate-950 uppercase italic tracking-tighter group-hover:text-primary-red transition-colors">{msg.subject}</h4>
+                            {msg.type === 'Support' && (
+                              <span className="px-2 py-0.5 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest rounded-sm shadow-lg shadow-red-500/20">High Priority</span>
+                            )}
+                          </div>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sender: <span className="text-slate-900">{msg.name}</span> <span className="mx-2">|</span> <span className="text-primary-red italic underline">{msg.email}</span></p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                           <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{new Date(msg.date).toLocaleDateString()}</span>
-                           <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 py-1 bg-slate-100 rounded-sm">{msg.type || 'Standard'}</span>
+                          <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{new Date(msg.date).toLocaleDateString()}</span>
+                          <span className="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 py-1 bg-slate-100 rounded-sm">{msg.type || 'Standard'}</span>
                         </div>
                       </div>
                       <div className="bg-slate-50 p-6 rounded-sm border-l-4 border-primary-red relative group-hover:bg-slate-100 transition-colors">
                         <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-30 transition-opacity">
-                           <FiMessageSquare size={40} />
+                          <FiMessageSquare size={40} />
                         </div>
                         <p className="text-slate-600 font-medium leading-relaxed italic relative z-10">"{msg.message}"</p>
                       </div>
                       <div className="flex justify-end pt-4 border-t border-slate-50 gap-4">
-                        <button 
+                        <button
                           onClick={() => {
                             setReplyingTo(msg);
                             setReplyModalOpen(true);
@@ -1623,7 +1417,7 @@ const Admin = () => {
                     <FiX size={20} />
                   </button>
                 </div>
-                
+
                 <div className="p-8 space-y-6">
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subject</label>
@@ -1635,7 +1429,7 @@ const Admin = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Your Reply</label>
-                      <button 
+                      <button
                         onClick={() => {
                           setIsReplying(true);
                           setTimeout(() => {
@@ -1651,7 +1445,7 @@ const Admin = () => {
                         <FiCpu size={12} /> Draft with AI
                       </button>
                     </div>
-                    <textarea 
+                    <textarea
                       value={replyMessage}
                       onChange={(e) => setReplyMessage(e.target.value)}
                       placeholder="Compose your response here..."
@@ -1659,7 +1453,7 @@ const Admin = () => {
                     ></textarea>
                   </div>
 
-                  <button 
+                  <button
                     disabled={isReplying || !replyMessage.trim()}
                     onClick={async () => {
                       setIsReplying(true);

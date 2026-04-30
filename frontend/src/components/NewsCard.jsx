@@ -7,28 +7,28 @@ const NewsCard = ({ article, variant = 'medium' }) => {
 
   if (variant === 'large') {
     return (
-      <div className="group transition duration-500 bg-transparent flex flex-col relative border-b border-slate-100 pb-10 mb-10 last:border-0 last:mb-0 last:pb-0">
-        <Link to={articleLink} className="relative w-full pb-[60%] overflow-hidden block rounded-[4px]">
+      <div className="group transition duration-500 bg-transparent flex flex-col relative mb-10 last:mb-0">
+        <Link to={articleLink} className="relative w-full pb-[60%] overflow-hidden block rounded-[2px]">
           <img 
             src={image} 
             alt={title} 
-            className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition duration-1000 ease-out"
+            className="absolute top-0 left-0 w-full h-full object-cover group-hover:scale-105 transition duration-[1500ms] ease-out grayscale-[0.2] group-hover:grayscale-0"
             loading="lazy"
           />
-          <span className="absolute top-0 left-0 bg-primary-red text-white text-[9px] font-black px-5 py-2 uppercase tracking-[0.2em] z-10 rounded-br-[4px]">
+          <div className="absolute top-0 left-0 bg-primary-red text-white text-[10px] font-black px-6 py-2.5 uppercase tracking-[0.3em] z-10 shadow-xl">
             {category}
-          </span>
+          </div>
         </Link>
-        <div className="pt-6 md:pt-8 flex flex-col">
+        <div className="pt-8 md:pt-10 flex flex-col">
           <Link to={articleLink}>
-            <h2 className="text-xl md:text-3xl font-black text-slate-900 mb-3 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.85] italic uppercase tracking-tightest">
+            <h2 className="text-xl md:text-3xl font-black text-slate-950 mb-4 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.9] italic uppercase tracking-tightest">
               {title}
             </h2>
           </Link>
-          <div className="w-10 h-0.5 bg-primary-red mb-4"></div>
-          <p className="text-slate-500 mb-4 line-clamp-3 text-sm md:text-base leading-relaxed font-medium italic max-w-2xl">{excerpt}</p>
-          <div className="flex items-center text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">
-            <span className="text-slate-900 mr-4 border-b border-slate-100 pb-0.5">{author}</span>
+          <div className="w-16 h-1 bg-primary-red mb-5 shadow-[0_2px_10px_rgba(229,62,62,0.3)]"></div>
+          <p className="text-slate-500 mb-5 line-clamp-3 text-sm md:text-base leading-relaxed font-medium italic max-w-2xl border-l-4 border-slate-100 pl-6">{excerpt}</p>
+          <div className="flex items-center text-[10px] text-slate-400 font-black uppercase tracking-[0.4em]">
+            <span className="text-slate-950 mr-4">{author}</span>
             <span className="opacity-20 mr-4">/</span>
             <span className="tracking-widest">{date}</span>
           </div>
