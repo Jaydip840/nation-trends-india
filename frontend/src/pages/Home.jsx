@@ -31,16 +31,16 @@ const Home = () => {
 
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://nationtrendsindia.com" />
+        <meta property="og:url" content="https://nation-trends-india.vercel.app" />
         <meta property="og:title" content="Nation Trends India | Latest News & Deep Analysis" />
         <meta property="og:description" content="The Pulse of a New India. Stay updated with the latest narratives in politics, business, and technology." />
-        <meta property="og:image" content="https://nationtrendsindia.com/nt-favicon.png" />
+        <meta property="og:image" content="https://nation-trends-india.vercel.app/nt-favicon.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Nation Trends India | Latest News" />
         <meta name="twitter:description" content="The Pulse of a New India. Breaking stories and deep analysis." />
-        <meta name="twitter:image" content="https://nationtrendsindia.com/nt-favicon.png" />
+        <meta name="twitter:image" content="https://nation-trends-india.vercel.app/nt-favicon.png" />
 
         {/* Structured Data (JSON-LD) */}
         <script type="application/ld+json">
@@ -48,10 +48,10 @@ const Home = () => {
             "@context": "https://schema.org",
             "@type": "WebSite",
             "name": "Nation Trends India",
-            "url": "https://nationtrendsindia.com",
+            "url": "https://nation-trends-india.vercel.app",
             "potentialAction": {
               "@type": "SearchAction",
-              "target": "https://nationtrendsindia.com/search?q={search_term_string}",
+              "target": "https://nation-trends-india.vercel.app/search?q={search_term_string}",
               "query-input": "required name=search_term_string"
             }
           })}
