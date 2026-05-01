@@ -5,7 +5,7 @@ const CategorySection = ({ title, categorySlug, articles, linkText = 'View All' 
   return (
     <div className="mb-12 md:mb-16 relative px-2">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 md:mb-10 border-l-4 border-primary-red pl-6">
-        <h2 className="text-2xl md:text-3xl font-black flex items-center text-gray-900 tracking-tighter uppercase">
+        <h2 className="text-xl md:text-3xl font-black flex items-center text-gray-900 tracking-tighter uppercase">
           {title}
         </h2>
         <Link 

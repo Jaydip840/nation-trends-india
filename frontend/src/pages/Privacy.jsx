@@ -54,7 +54,7 @@ const Privacy = () => {
                         <span className="inline-block py-1 px-3 bg-blue-50 text-blue-600 font-bold text-[10px] uppercase tracking-[0.2em] rounded-sm">
                             Data Protection
                         </span>
-                        <h1 className="text-4xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
+                        <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
                             Privacy <br />
                             <span className="text-primary-red italic">Policy.</span>
                         </h1>
@@ -70,7 +70,7 @@ const Privacy = () => {
                 <section className="max-w-4xl mx-auto px-4 md:px-6 pb-32 text-left">
                     <div className="prose prose-slate max-w-none">
                         <div className="mb-16 border-l-4 border-primary-red pl-10">
-                            <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-relaxed italic">
+                            <p className="text-lg md:text-2xl font-black text-slate-900 tracking-tight leading-relaxed italic">
                                 "Your digital identity is your own. We are committed to protecting your personal data with absolute transparency."
                             </p>
                         </div>
@@ -78,12 +78,12 @@ const Privacy = () => {
                         <div className="space-y-20">
                             {sections.map((item, i) => (
                                 <div key={i} className="group">
-                                    <div className="flex items-baseline space-x-6 mb-6">
-                                        <span className="text-4xl md:text-6xl font-black text-slate-100 group-hover:text-primary-red transition-colors duration-700 leading-none">{item.id}</span>
-                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">{item.title}</h3>
+                                    <div className="flex items-baseline space-x-4 md:space-x-6 mb-4 md:mb-6">
+                                        <span className="text-3xl md:text-6xl font-black text-slate-100 group-hover:text-primary-red transition-colors duration-700 leading-none">{item.id}</span>
+                                        <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight uppercase">{item.title}</h3>
                                     </div>
-                                    <div className="pl-0 md:pl-20">
-                                        <p className="text-lg text-slate-600 font-medium leading-relaxed">{item.text}</p>
+                                    <div className="pl-0 md:pl-16 lg:pl-20">
+                                        <p className="text-base md:text-lg text-slate-600 font-medium leading-relaxed">{item.text}</p>
                                     </div>
                                 </div>
                             ))}

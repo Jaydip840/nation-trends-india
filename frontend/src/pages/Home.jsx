@@ -67,10 +67,10 @@ const Home = () => {
       </div>
 
       {/* Main Content Area */}
-      <section className="relative z-10 mb-16 md:mb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+      <section className="relative z-10 mb-16 md:mb-20 px-4 sm:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Left/Main Column - Hero Section */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-16">
+          <div className="md:col-span-7 xl:col-span-8 space-y-12 lg:space-y-16">
             {heroArticle ? (
               <>
                 <NewsCard article={heroArticle} variant="large" />
@@ -90,7 +90,7 @@ const Home = () => {
           </div>
 
           {/* Right Column - Sidebar */}
-          <div className="lg:col-span-5 xl:col-span-4">
+          <div className="md:col-span-5 xl:col-span-4">
             <Sidebar />
           </div>
         </div>

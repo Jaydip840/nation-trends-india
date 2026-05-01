@@ -11,6 +11,7 @@ const Support = () => {
 
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -18,6 +19,14 @@ const Support = () => {
         issueType: 'Restricted Account',
         message: ''
     });
+
+    const issueCategories = [
+        'Restricted Account',
+        'Login Difficulty',
+        'Technical Bug',
+        'Editorial Feedback',
+        'Other Enquiry'
+    ];
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -132,21 +141,42 @@ const Support = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-2 relative">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                                         <FiInfo size={12} className="text-primary-red" /> Issue Category
                                     </label>
-                                    <select
-                                        value={formData.issueType}
-                                        onChange={e => setFormData({ ...formData, issueType: e.target.value })}
-                                        className="w-full bg-white border border-slate-100 px-6 py-4 rounded-sm text-sm font-bold focus:ring-1 focus:ring-primary-red outline-none transition-all shadow-sm appearance-none cursor-pointer"
+                                    <div 
+                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                        className="w-full bg-white border border-slate-100 px-6 py-4 rounded-sm text-sm font-bold flex justify-between items-center cursor-pointer hover:border-slate-300 transition-all shadow-sm"
                                     >
-                                        <option>Restricted Account</option>
-                                        <option>Login Difficulty</option>
-                                        <option>Technical Bug</option>
-                                        <option>Editorial Feedback</option>
-                                        <option>Other Enquiry</option>
-                                    </select>
+                                        <span className="text-slate-900">{formData.issueType}</span>
+                                        <div className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`}>
+                                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M1 1L5 5L9 1" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-[calc(100%+5px)] left-0 w-full bg-white border border-slate-100 shadow-2xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                            {issueCategories.map((cat) => (
+                                                <div 
+                                                    key={cat}
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, issueType: cat });
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className={`px-6 py-3 text-sm font-bold cursor-pointer transition-colors ${
+                                                        formData.issueType === cat 
+                                                        ? 'bg-slate-50 text-primary-red' 
+                                                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                                    }`}
+                                                >
+                                                    {cat}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

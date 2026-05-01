@@ -112,14 +112,14 @@ const Article = () => {
 
       <div className="bg-white min-h-screen">
         {/* BREADCRUMB HEADER */}
-        <div className="max-w-7xl mx-auto px-6 py-4 border-b border-slate-50 mb-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 border-b border-slate-50 mb-8">
             <Breadcrumb items={[
                 { label: article.category || 'News', href: `/category/${(article.category || 'India').toLowerCase()}` },
                 { label: article.title, href: '#' }
             ]} />
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 relative">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 relative">
           
           {/* STICKY SOCIAL SIDEBAR */}
           <div className="hidden xl:block absolute -left-20 top-0 h-full">
@@ -136,9 +136,9 @@ const Article = () => {
              </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
             {/* MAIN COLUMN */}
-            <div className="lg:col-span-12 xl:col-span-8 flex flex-col">
+            <div className="md:col-span-12 xl:col-span-8 flex flex-col">
               <article className="space-y-8">
                 {/* ARTICLE HEADER */}
                 <header className="space-y-8">
@@ -146,43 +146,43 @@ const Article = () => {
                         <span className="text-primary-red font-black uppercase tracking-[0.4em] text-[10px]">
                             {article.category} News
                         </span>
-                        <h1 className="text-3xl md:text-5xl font-black text-slate-900 leading-[1.05] tracking-tighter uppercase italic">
+                        <h1 className="text-2xl md:text-5xl lg:text-6xl font-black text-slate-900 leading-[1.1] tracking-tighter uppercase italic">
                             {article.title}
                         </h1>
                         {article.subheadline && (
-                          <h2 className="text-lg md:text-xl font-bold text-slate-500 leading-relaxed tracking-tight max-w-4xl pt-2">
+                          <h2 className="text-base md:text-xl font-bold text-slate-500 leading-relaxed tracking-tight max-w-4xl pt-2">
                              {article.subheadline}
                           </h2>
                         )}
-                        <p className="text-slate-500 font-medium text-base md:text-lg leading-relaxed italic max-w-3xl border-l-2 border-slate-100 pl-6 py-2 mt-6">
+                        <p className="text-slate-400 font-medium text-sm md:text-lg leading-relaxed italic max-w-4xl border-l-2 border-slate-100 pl-6 py-2 mt-4">
                             {article.excerpt}
                         </p>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-4 py-12 border-y border-slate-100 gap-10 md:gap-4">
-                       <div className="flex items-center space-x-5">
+                    <div className="grid grid-cols-2 md:grid-cols-4 py-8 md:py-12 border-y border-slate-100 gap-y-8 gap-x-4 md:gap-4">
+                       <div className="flex items-center space-x-3 md:space-x-5 col-span-2 md:col-span-1 border-b md:border-b-0 pb-6 md:pb-0 border-slate-50">
                           <img 
                             src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=100" 
-                            className="w-16 h-16 rounded-full object-cover grayscale border-2 border-white shadow-xl shadow-slate-200"
+                            className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover grayscale border-2 border-white shadow-xl shadow-slate-200"
                             alt="Author"
                           />
                           <div className="flex flex-col">
-                            <span className="text-primary-red text-[11px] font-black uppercase tracking-widest">By {article.author}</span>
-                            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">Editorial Team</span>
+                            <span className="text-primary-red text-[10px] md:text-[11px] font-black uppercase tracking-widest">By {article.author}</span>
+                            <span className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] italic">Editorial Team</span>
                           </div>
                        </div>
-                       <div className="flex flex-col md:items-center justify-center md:border-x border-slate-100 px-6">
-                          <span className="text-slate-900 text-[11px] font-black uppercase tracking-widest mb-1.5 leading-none">Published</span>
-                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">{article.date}</span>
+                       <div className="flex flex-col md:items-center justify-center md:border-x border-slate-100 pr-4 md:px-6">
+                          <span className="text-slate-900 text-[10px] md:text-[11px] font-black uppercase tracking-widest mb-1 leading-none">Published</span>
+                          <span className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] italic">{article.date}</span>
                        </div>
-                       <div className="flex flex-col md:items-center justify-center md:border-r border-slate-100 px-6 text-center">
-                          <span className="text-slate-900 text-[11px] font-black uppercase tracking-widest mb-1.5 leading-none">Read Time</span>
-                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] italic">
+                       <div className="flex flex-col md:items-center justify-center md:border-r border-slate-100 pl-4 md:px-6 border-l border-slate-100 md:border-l-0 text-right md:text-center">
+                          <span className="text-slate-900 text-[10px] md:text-[11px] font-black uppercase tracking-widest mb-1 leading-none">Read Time</span>
+                          <span className="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] italic">
                               {article.readingTime || (Math.ceil((typeof article.content === 'string' ? article.content?.split(' ').length : 0) || 0) / 200) + ' min read'}
                           </span>
                        </div>
-                        <div className="flex flex-col md:items-end justify-center">
-                         <span className="text-slate-900 text-[11px] font-black uppercase tracking-widest mb-2 leading-none">Save Story</span>
+                        <div className="flex flex-col items-center md:items-end justify-center col-span-2 md:col-span-1 pt-6 md:pt-0 border-t md:border-t-0 border-slate-50">
+                         <span className="text-slate-900 text-[10px] md:text-[11px] font-black uppercase tracking-widest mb-2 leading-none">Save Story</span>
                          <div className="flex items-center gap-3">
                              <button 
                                  onClick={async () => {
@@ -203,7 +203,7 @@ const Article = () => {
                                          await saveArticle(article.id);
                                      }
                                  }}
-                                 className={`text-[10px] font-black uppercase tracking-[0.2em] px-5 py-2.5 border transition-all duration-300 rounded-[4px] ${
+                                 className={`text-[10px] font-black uppercase tracking-[0.2em] px-8 md:px-5 py-2.5 border transition-all duration-300 rounded-[4px] ${
                                      currentUser?.savedArticles?.includes(article.id) 
                                      ? 'bg-primary-red text-white border-primary-red' 
                                      : 'text-slate-400 border-slate-200 hover:text-slate-900 hover:border-slate-900 shadow-sm hover:shadow-md'
@@ -213,12 +213,23 @@ const Article = () => {
                              </button>
                          </div>
                      </div>
-                 </div>
-               </header>
+                  </div>
+
+                  {/* MOBILE SHARE BAR */}
+                  <div className="xl:hidden flex items-center justify-between py-6 border-b border-slate-100">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Share Story:</span>
+                    <div className="flex items-center gap-6">
+                      <button onClick={() => handleShare('twitter')} className="text-slate-400 hover:text-primary-red transition-colors"><FiTwitter size={18}/></button>
+                      <button onClick={() => handleShare('facebook')} className="text-slate-400 hover:text-primary-red transition-colors"><FiFacebook size={18}/></button>
+                      <button onClick={() => handleShare('linkedin')} className="text-slate-400 hover:text-primary-red transition-colors"><FiLinkedin size={18}/></button>
+                      <button className="text-slate-400 hover:text-primary-red transition-colors"><FiShare2 size={18}/></button>
+                    </div>
+                  </div>
+                </header>
 
                 {/* HERO MEDIA */}
-                <div className="space-y-4">
-                  <div className="aspect-video overflow-hidden bg-slate-100 group rounded-[4px]">
+                <div className="space-y-4 -mx-4 md:mx-0">
+                  <div className="aspect-video overflow-hidden bg-slate-100 group md:rounded-[4px]">
                     <img 
                         src={article.image} 
                         alt={article.imageAlt || article.title} 
@@ -261,26 +272,26 @@ const Article = () => {
                         )}
                         
                         {block.type === 'paragraph' && (
-                          <p className={`text-slate-700 text-base md:text-[1.1rem] leading-relaxed font-medium font-serif mb-8 ${index === 0 ? 'drop-cap' : ''}`}>
+                          <p className={`text-slate-700 text-base md:text-lg lg:text-[1.2rem] leading-relaxed md:leading-relaxed font-medium font-serif mb-6 md:mb-10 ${index === 0 ? 'drop-cap' : ''}`}>
                             {block.text}
                           </p>
                         )}
 
                         {block.type === 'faq' && block.items && (
-                          <div className="my-12 space-y-8 bg-slate-50 p-8 lg:p-12 border-y border-slate-100">
-                             <h4 className="text-[10px] font-black text-primary-red uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
+                          <div className="my-12 space-y-8 bg-slate-50 p-6 md:p-12 border-y border-slate-100 -mx-4 md:mx-0">
+                             <h4 className="text-[11px] font-black text-primary-red uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
                                <div className="w-8 h-px bg-primary-red"></div>
                                Frequently Asked Questions
                              </h4>
                              <div className="space-y-10">
                                 {block.items.map((faq, i) => (
-                                  <div key={i} className="space-y-4">
+                                  <div key={i} className="space-y-3">
                                     <div className="flex gap-4">
                                       <span className="text-primary-red font-black italic">Q.</span>
-                                      <h5 className="text-lg font-black text-slate-900 uppercase tracking-tight leading-tight">{faq.q}</h5>
+                                      <h5 className="text-[1.1rem] md:text-xl font-bold text-slate-900 leading-snug">{faq.q}</h5>
                                     </div>
-                                    <div className="flex gap-4 pl-6">
-                                      <p className="text-base text-slate-600 font-medium leading-relaxed font-serif">{faq.a}</p>
+                                    <div className="flex gap-4 pl-7">
+                                      <p className="text-base md:text-lg text-slate-600 font-medium leading-relaxed font-serif">{faq.a}</p>
                                     </div>
                                   </div>
                                 ))}
@@ -302,12 +313,12 @@ const Article = () => {
                         )}
 
                         {(block.type === 'image' || block.type === 'subimage') && block.url && (
-                          <div className="my-16 space-y-4">
-                            <div className="rounded-[4px] overflow-hidden bg-slate-50">
+                          <div className="my-16 space-y-4 -mx-4 md:mx-0">
+                            <div className="md:rounded-[4px] overflow-hidden bg-slate-50">
                               <img src={block.url} alt={block.caption} className="w-full h-auto grayscale hover:grayscale-0 transition-all duration-[1500ms]" />
                             </div>
                             {block.caption && (
-                              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 px-4">
                                 {block.caption}
                               </p>
                             )}
@@ -331,10 +342,10 @@ const Article = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="text-slate-800 text-base md:text-[1.1rem] leading-relaxed font-medium font-serif">
+                    <div className="text-slate-800 text-base md:text-lg lg:text-[1.2rem] leading-relaxed md:leading-relaxed font-medium font-serif">
                       {article.content?.split('\n').map((paragraph, idx) => (
                         paragraph.trim() && (
-                          <p key={idx} className={`mb-8 last:mb-0 ${idx === 0 ? 'drop-cap' : ''}`}>
+                          <p key={idx} className={`mb-6 md:mb-10 last:mb-0 ${idx === 0 ? 'drop-cap' : ''}`}>
                             {paragraph}
                           </p>
                         )
@@ -346,7 +357,7 @@ const Article = () => {
             </div>
             
             {/* SIDEBAR */}
-            <div className="lg:col-span-12 xl:col-span-4 border-t xl:border-t-0 xl:border-l border-slate-50 pt-16 xl:pt-0 xl:pl-8">
+            <div className="md:col-span-12 xl:col-span-4 border-t xl:border-t-0 xl:border-l border-slate-50 pt-12 xl:pt-0 xl:pl-8">
               <div className="sticky top-32">
                 <Sidebar category={article.category} />
               </div>

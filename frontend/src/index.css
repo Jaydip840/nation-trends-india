@@ -154,7 +154,7 @@
   }
 
   .drop-cap::first-letter {
-    @apply float-left text-6xl md:text-8xl font-black mr-4 mb-1 mt-1 leading-[0.8] text-primary-red;
+    @apply float-left text-5xl md:text-8xl font-black mr-3 mb-1 mt-1 leading-[0.8] text-primary-red;
     float: left;
     margin-right: 0.5rem;
   }

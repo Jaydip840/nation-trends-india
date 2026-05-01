@@ -77,7 +77,7 @@ const Navbar = () => {
           </Link>
 
           {/* DESKTOP NAVIGATION */}
-          <nav className="hidden md:flex space-x-10 items-center">
+          <nav className="hidden md:flex md:space-x-4 lg:space-x-10 items-center">
             <Link to="/" className="text-slate-900 hover:text-primary-red font-black transition-all duration-500 text-[11px] uppercase tracking-[0.4em] relative">
                 HOME
             </Link>

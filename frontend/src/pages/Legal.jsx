@@ -18,7 +18,7 @@ const Legal = ({ type, Hub }) => {
           
           <section className="max-w-7xl mx-auto px-4 md:px-6 pt-16 pb-20 text-center">
             <span className="inline-block py-1 px-3 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-6">Transparency Portal</span>
-            <h1 className="text-4xl md:text-8xl font-black text-slate-900 tracking-tighter uppercase leading-tight mb-8">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-8">
               Legal <span className="text-primary-red italic">HUB</span>
             </h1>
             <p className="max-w-2xl mx-auto text-slate-500 text-lg font-medium leading-relaxed italic">
@@ -51,7 +51,7 @@ const Legal = ({ type, Hub }) => {
                 <a 
                   key={i} 
                   href={item.link} 
-                  className="group bg-slate-50 p-12 border border-slate-100 hover:bg-slate-950 transition-all duration-700 rounded-sm relative overflow-hidden"
+                  className="group bg-slate-50 p-8 md:p-12 border border-slate-100 hover:bg-slate-950 transition-all duration-500 ease-in-out rounded-sm relative overflow-hidden"
                 >
                   <div className="w-12 h-12 bg-white flex items-center justify-center text-slate-900 group-hover:bg-primary-red group-hover:text-white transition-all duration-500 mb-8 rounded-sm shadow-sm group-hover:shadow-2xl">
                     {item.icon}
@@ -62,9 +62,9 @@ const Legal = ({ type, Hub }) => {
                   <p className="text-slate-500 group-hover:text-slate-400 text-sm font-medium leading-relaxed mb-8 transition-colors">
                     {item.desc}
                   </p>
-                  <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.4em] text-slate-950 group-hover:text-primary-red transition-all">
+                  <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.4em] text-slate-950 group-hover:text-primary-red transition-all duration-500">
                     <span>View Docs</span> 
-                    <FiArrowRight className="group-hover:translate-x-2 transition-transform" />
+                    <FiArrowRight className="group-hover:translate-x-3 transition-transform duration-500" />
                   </div>
                 </a>
               ))}
@@ -96,7 +96,7 @@ const Legal = ({ type, Hub }) => {
             <span className="inline-block py-1 px-3 bg-slate-100 text-slate-500 font-bold text-[10px] uppercase tracking-[0.2em] rounded-none">
               Official Documentation
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none uppercase">
               {type.split(' ').slice(0, -1).join(' ')} <br />
               <span className="text-primary-red italic">{type.split(' ').slice(-1)}</span>
             </h1>
@@ -112,8 +112,8 @@ const Legal = ({ type, Hub }) => {
         {/* MAIN CONTENT AREA */}
         <section className="max-w-4xl mx-auto px-4 md:px-6 pb-32">
           <div className="prose prose-slate max-w-none">
-            <div className="mb-16 border-l-4 border-primary-red pl-10">
-              <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-relaxed">
+            <div className="mb-16 border-l-4 border-primary-red pl-6 md:pl-10">
+              <p className="text-lg md:text-2xl font-black text-slate-900 tracking-tight leading-relaxed">
                 At Nation Trends India, we believe in radical transparency. This document outlines our data governance and the legal framework that protects our community.
               </p>
             </div>
@@ -147,11 +147,11 @@ const Legal = ({ type, Hub }) => {
                 }
               ].map((item, i) => (
                 <section key={i} className="group">
-                  <div className="flex items-baseline space-x-4 md:space-x-6 mb-6">
+                  <div className="flex items-baseline space-x-4 md:space-x-6 mb-4 md:mb-6">
                     <span className="text-3xl md:text-5xl font-black text-slate-100 group-hover:text-primary-red transition-colors duration-500 select-none leading-none">{item.id}</span>
-                    <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight uppercase">{item.title}</h3>
+                    <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight uppercase">{item.title}</h3>
                   </div>
-                  <div className="pl-0 md:pl-16">
+                  <div className="pl-0 md:pl-16 lg:pl-20">
                     <p className="text-base md:text-lg text-slate-600 font-medium leading-relaxed">{item.text}</p>
                   </div>
                 </section>

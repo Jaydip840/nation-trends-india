@@ -42,9 +42,9 @@ const Profile = () => {
 
             {/* Profile Header: Pure Minimalism */}
             <div className="bg-white border-b border-slate-100">
-                <div className="max-w-7xl mx-auto px-6 lg:px-12 py-20 lg:py-32">
-                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-12">
-                        <div className="flex items-start lg:items-center gap-8 lg:gap-12">
+                <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12 lg:py-32">
+                    <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-10 lg:gap-12 text-center lg:text-left">
+                        <div className="flex flex-col lg:flex-row items-center lg:items-center gap-6 lg:gap-12">
                             <div className="relative group">
                                 <div className="w-24 h-24 lg:w-32 lg:h-32 bg-slate-950 flex items-center justify-center text-white rounded-sm shadow-2xl relative overflow-hidden">
                                      <FiUser size={40} className="relative z-10" />
@@ -52,20 +52,19 @@ const Profile = () => {
                                 </div>
                                 <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-4 border-white"></div>
                             </div>
-                            
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4">
-                                    <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[8px] font-black uppercase tracking-widest rounded-sm border border-slate-200">Verified Account</span>
-                                    <span className="px-3 py-1 bg-primary-red text-white text-[8px] font-black uppercase tracking-widest rounded-sm">{currentUser.authMethod || 'Standard Login'}</span>
+                                                        <div className="space-y-4">
+                                <div className="flex items-center justify-center lg:justify-start gap-4">
+                                    <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-sm border border-slate-200">Verified Account</span>
+                                    <span className="px-3 py-1 bg-primary-red text-white text-[10px] font-black uppercase tracking-widest rounded-sm">{currentUser.authMethod || 'Standard Login'}</span>
                                 </div>
                                 <h1 className="text-4xl lg:text-6xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">{currentUser.name}</h1>
-                                <p className="text-sm font-bold text-slate-400 italic">Official Member</p>
+                                <p className="text-xs font-bold text-slate-400 italic">Official Member</p>
                             </div>
                         </div>
 
                         <button 
                             onClick={() => setIsLogoutModalOpen(true)}
-                            className="hidden lg:flex items-center gap-3 px-8 py-4 bg-white border border-slate-200 text-slate-950 rounded-sm font-black text-[10px] uppercase tracking-[0.3em] hover:bg-slate-950 hover:text-white hover:border-slate-950 transition-all duration-500 group"
+                            className="flex items-center gap-3 px-10 lg:px-8 py-4 bg-white border border-slate-200 text-slate-950 rounded-sm font-black text-[10px] uppercase tracking-[0.3em] hover:bg-slate-950 hover:text-white hover:border-slate-950 transition-all duration-500 group shadow-sm hover:shadow-xl"
                         >
                             <FiLogOut className="group-hover:translate-x-1 transition-transform" />
                             <span>Sign Out</span>
@@ -91,7 +90,7 @@ const Profile = () => {
                                         <FiMail size={16} />
                                     </div>
                                     <div className="space-y-1 text-left">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Email Address</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Email Address</p>
                                         <p className="text-xs font-black text-slate-950 underline decoration-primary-red/30 cursor-pointer">{currentUser.email}</p>
                                     </div>
                                 </div>
@@ -101,7 +100,7 @@ const Profile = () => {
                                         <FiCalendar size={16} />
                                     </div>
                                     <div className="space-y-1 text-left">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Joined Date</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Joined Date</p>
                                         <p className="text-xs font-black text-slate-950 uppercase">
                                             {new Date(currentUser.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                         </p>
@@ -113,7 +112,7 @@ const Profile = () => {
                                         <FiShield size={16} />
                                     </div>
                                     <div className="space-y-1 text-left">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Account Role</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Account Role</p>
                                         <p className="text-xs font-black text-slate-950 uppercase tracking-widest text-primary-red">{currentUser.role || 'MEMBER'}</p>
                                     </div>
                                 </div>
@@ -123,7 +122,7 @@ const Profile = () => {
                                         <FiActivity size={16} />
                                     </div>
                                     <div className="space-y-1 text-left">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Last Activity</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Last Activity</p>
                                         <p className="text-xs font-black text-slate-950 uppercase">
                                             {currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleDateString() : 'Active Now'}
                                         </p>

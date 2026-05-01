@@ -21,7 +21,7 @@ const NewsCard = ({ article, variant = 'medium' }) => {
         </Link>
         <div className="pt-8 md:pt-10 flex flex-col">
           <Link to={articleLink}>
-            <h2 className="text-xl md:text-3xl font-black text-slate-950 mb-4 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.9] italic uppercase tracking-tightest">
+            <h2 className="text-lg md:text-3xl font-black text-slate-950 mb-3 md:mb-4 group-hover:text-primary-red transition-all duration-500 line-clamp-3 leading-[0.9] italic uppercase tracking-tightest">
               {title}
             </h2>
           </Link>
@@ -81,7 +81,7 @@ const NewsCard = ({ article, variant = 'medium' }) => {
       </Link>
       <div className="pt-5 flex flex-col flex-grow">
         <Link to={articleLink}>
-          <h3 className="text-lg font-black text-slate-900 mb-2.5 group-hover:text-primary-red transition duration-500 line-clamp-2 leading-tight tracking-tight uppercase">
+          <h3 className="text-[15px] md:text-lg font-black text-slate-900 mb-2 group-hover:text-primary-red transition duration-500 line-clamp-2 leading-tight tracking-tight uppercase">
             {title}
           </h3>
         </Link>
