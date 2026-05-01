@@ -102,7 +102,7 @@ const Article = () => {
               "name": "Nation Trends India",
               "logo": {
                 "@type": "ImageObject",
-                "url": "https://nationtrendsindia.com/nt-favicon.png"
+                "url": "https://nation-trends-india.vercel.app/nt-favicon.png"
               }
             },
             "description": article.metaDescription || article.subheadline || article.excerpt
