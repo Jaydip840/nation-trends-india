@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { googleLogout } from '@react-oauth/google';
 
 const NewsContext = createContext();
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -209,6 +210,11 @@ export const NewsProvider = ({ children }) => {
   };
 
   const logout = () => {
+    try {
+      googleLogout(); // Cleanup Google session
+    } catch (err) {
+      console.log('Google Logout Error:', err);
+    }
     setCurrentUser(null);
     localStorage.removeItem('nti_user');
   };

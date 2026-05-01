@@ -4,9 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FiMail, FiLock, FiArrowRight, FiShield, FiCpu, FiEye, FiEyeOff, FiCheck, FiUser } from 'react-icons/fi';
 import { FaGoogle } from 'react-icons/fa';
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
-
-const GOOGLE_CLIENT_ID = "935042482901-kra0im5fkb0g1t2pjnhvuk2t5p9eg8mj.apps.googleusercontent.com";
+import { useGoogleLogin, useGoogleOneTapLogin } from '@react-oauth/google';
 
 const AuthContent = ({ isAdminLogin, isRegister, setIsRegister, setIsAdminLogin }) => {
     const [showPassword, setShowPassword] = useState(false);
@@ -41,10 +39,32 @@ const AuthContent = ({ isAdminLogin, isRegister, setIsRegister, setIsAdminLogin 
         toast.error('Google Sign-In Aborted.');
     };
 
+    // Google Button Click (Implicit Flow)
     const triggerGoogleLogin = useGoogleLogin({
         onSuccess: handleGoogleSuccess,
         onError: handleGoogleError,
         auto_select: true,
+    });
+
+    // Google One Tap (Automatic Suggestion)
+    useGoogleOneTapLogin({
+        onSuccess: async (credentialResponse) => {
+            try {
+                // One Tap provides an ID Token (credential)
+                const res = await googleLogin(credentialResponse.credential, false);
+                if (res.success) {
+                    toast.success(`Welcome back, ${res.name || 'User'}!`);
+                    if (res.role === 'admin') navigate('/admin');
+                    else navigate('/');
+                }
+            } catch (err) {
+                console.error('One Tap Error:', err);
+            }
+        },
+        onError: () => {
+            console.log('One Tap Suggestion Closed or Error.');
+        },
+        disabled: isAdminLogin, // Don't show suggestion if admin login is active
     });
 
     const handleSubmit = async (e) => {
@@ -280,14 +300,12 @@ const Auth = () => {
     const [isAdminLogin, setIsAdminLogin] = useState(false);
 
     return (
-        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-            <AuthContent
-                isRegister={isRegister}
-                setIsRegister={setIsRegister}
-                isAdminLogin={isAdminLogin}
-                setIsAdminLogin={setIsAdminLogin}
-            />
-        </GoogleOAuthProvider>
+        <AuthContent
+            isRegister={isRegister}
+            setIsRegister={setIsRegister}
+            isAdminLogin={isAdminLogin}
+            setIsAdminLogin={setIsAdminLogin}
+        />
     );
 };
 
